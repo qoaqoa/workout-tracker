@@ -1,0 +1,2086 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>운동기록 트래커</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#F5F4F0; --surface:#FFF; --surface2:#F0EEE9; --border:#E2DFD8;
+  --tp:#1A1916; --ts:#6B6860; --tm:#A8A59E;
+  --a:#2D6A4F; --al:#D8EFE4;
+  --a2:#E76F51; --a2l:#FDE8E2;
+  --a3:#457B9D; --a3l:#DCF0FA;
+  --y:#F4A261; --yl:#FEF3E2;
+  --pu:#6D597A; --pul:#EDE8F2;
+  --sh1:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --sh2:0 4px 12px rgba(0,0,0,.08),0 2px 4px rgba(0,0,0,.04);
+  --sh3:0 8px 24px rgba(0,0,0,.10),0 4px 8px rgba(0,0,0,.06);
+  --r:14px; --rs:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--tp);min-height:100vh;font-size:14px}
+
+/* ── Layout ── */
+.app-shell{display:grid;grid-template-columns:200px 1fr;grid-template-rows:auto 1fr;min-height:100vh}
+
+/* ── Sidebar ── */
+.sidebar{
+  grid-row:1/3;
+  background:var(--surface);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  position:sticky;top:0;height:100vh;
+  overflow:hidden;
+}
+.sidebar-logo{padding:22px 22px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+.logo-mark{width:34px;height:34px;background:var(--a);border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+.logo-mark svg{width:18px;height:18px;fill:white}
+.logo-title{font-size:15px;font-weight:700;letter-spacing:-.3px}
+.logo-sub{font-size:11px;color:var(--tm);margin-top:2px;font-family:'DM Mono',monospace}
+.sidebar-nav{padding:12px 10px;flex-shrink:0}
+.nav-label{font-size:10px;font-weight:600;color:var(--tm);letter-spacing:.8px;text-transform:uppercase;padding:0 10px;margin:12px 0 5px}
+.nav-label:first-child{margin-top:0}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--rs);cursor:pointer;transition:all .15s;color:var(--ts);font-size:13px;font-weight:500;border:none;background:none;width:100%;text-align:left}
+.nav-item:hover{background:var(--surface2);color:var(--tp)}
+.nav-item.active{background:var(--al);color:var(--a);font-weight:600}
+
+/* ── Dashboard calendar nav btn ── */
+.cal-btn{width:24px;height:24px;border:none;background:var(--surface2);cursor:pointer;border-radius:5px;color:var(--ts);display:flex;align-items:center;justify-content:center;font-size:14px;transition:background .1s}
+.cal-btn:hover{background:var(--border)}
+
+/* ── Header ── */
+.main-header{grid-column:2;background:var(--surface);border-bottom:1px solid var(--border);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.page-title{font-size:17px;font-weight:700;letter-spacing:-.3px}
+
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--rs);font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;border:none;white-space:nowrap}
+.btn-primary{background:var(--a);color:white}
+.btn-primary:hover{background:#235C43;transform:translateY(-1px);box-shadow:var(--sh2)}
+.btn-secondary{background:var(--surface2);color:var(--tp);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--border)}
+.btn-ghost{background:none;color:var(--ts);border:1px solid transparent;padding:7px 11px}
+.btn-ghost:hover{background:var(--surface2);color:var(--tp)}
+.btn-danger{background:var(--a2l);color:var(--a2);border:1px solid transparent;padding:5px 9px;font-size:12px}
+.btn-danger:hover{background:var(--a2);color:white}
+.btn-edit{background:var(--al);color:var(--a);border:1px solid transparent;padding:5px 9px;font-size:12px}
+.btn-edit:hover{background:var(--a);color:white}
+.btn-sm{padding:5px 10px;font-size:12px}
+
+/* ── Main ── */
+.main-content{grid-column:2;padding:24px 28px}
+.page-section{display:none}
+.page-section.active{display:block}
+
+/* ── Card ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;box-shadow:var(--sh1);margin-bottom:16px}
+.card:last-child{margin-bottom:0}
+.card-title{font-size:14px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:7px}
+
+/* ── Stats ── */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;box-shadow:var(--sh1);position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s}
+.stat-card:hover{transform:translateY(-2px);box-shadow:var(--sh2)}
+.stat-accent{position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--r) var(--r) 0 0}
+.stat-label{font-size:10px;font-weight:600;color:var(--tm);letter-spacing:.5px;text-transform:uppercase;margin-bottom:5px}
+.stat-value{font-size:24px;font-weight:700;letter-spacing:-1px;font-family:'DM Mono',monospace;line-height:1;margin-bottom:3px}
+.stat-sub{font-size:11px;color:var(--tm)}
+.stat-unit{font-size:11px;font-weight:500;color:var(--tm);flex-shrink:0}
+.trend-compare{display:flex;align-items:center;gap:5px;margin-top:4px;font-size:11px;color:var(--tm);flex-wrap:wrap}
+.trend-up{color:#2D6A4F;font-weight:700}
+.trend-down{color:var(--a2);font-weight:700}
+.trend-same{color:var(--tm);font-weight:700}
+
+/* ── Form ── */
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-label{font-size:12px;font-weight:600;color:var(--ts)}
+.required{color:var(--a2);margin-left:2px}
+.form-control{padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--rs);font-family:'Noto Sans KR',sans-serif;font-size:13px;color:var(--tp);background:var(--surface);transition:border-color .15s,box-shadow .15s;outline:none;-webkit-appearance:none}
+.form-control:focus{border-color:var(--a);box-shadow:0 0 0 3px var(--al)}
+.form-control.error{border-color:var(--a2);box-shadow:0 0 0 3px var(--a2l)}
+textarea.form-control{resize:vertical;min-height:60px}
+.session-header{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding:16px 18px;background:var(--surface2);border-radius:var(--rs);border:1.5px solid var(--border);margin-bottom:20px}
+.session-header-label{font-size:10px;font-weight:700;color:var(--tm);letter-spacing:.5px;text-transform:uppercase;margin-bottom:5px}
+
+/* ── Exercise items ── */
+.exercises-list{display:flex;flex-direction:column;gap:8px}
+.exercise-item{border:1.5px solid var(--border);border-radius:var(--r);overflow:hidden;animation:fadeSlide .2s ease;transition:border-color .15s}
+.exercise-item:focus-within{border-color:var(--a)}
+@keyframes fadeSlide{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.exercise-item-header{display:flex;align-items:center;gap:9px;padding:10px 13px;background:var(--surface2);border-bottom:1px solid var(--border);cursor:pointer;user-select:none}
+.exercise-num{width:20px;height:20px;border-radius:50%;background:var(--a);color:white;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'DM Mono',monospace}
+.exercise-type-select{flex-shrink:0;padding:5px 9px;border:1.5px solid var(--border);border-radius:var(--rs);font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:600;color:var(--tp);background:var(--surface);cursor:pointer;outline:none;transition:border-color .15s}
+.exercise-type-select:focus{border-color:var(--a)}
+.exercise-summary{flex:1;font-size:12px;color:var(--ts);font-family:'DM Mono',monospace;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.exercise-item-body{padding:14px;display:none;background:var(--surface)}
+.exercise-item-body.open{display:block}
+.fields-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.fields-grid.g2{grid-template-columns:repeat(2,1fr)}
+.sets-wrap{display:flex;flex-direction:column;gap:6px;margin-bottom:7px}
+.set-row{display:flex;align-items:center;gap:7px;animation:fadeSlide .15s ease}
+.set-badge{font-size:10px;font-weight:700;color:var(--tm);width:36px;text-align:center;font-family:'DM Mono',monospace;background:var(--surface2);border-radius:4px;padding:3px 0;flex-shrink:0}
+.set-unit{font-size:12px;color:var(--tm);flex-shrink:0}
+.btn-icon{width:28px;height:28px;border:1.5px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--tm);font-size:13px;transition:all .1s;flex-shrink:0}
+.btn-icon:hover{background:var(--a2l);border-color:var(--a2);color:var(--a2)}
+.add-set-btn{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:var(--a);background:var(--al);border:none;border-radius:6px;padding:4px 9px;cursor:pointer;transition:background .1s}
+.add-set-btn:hover{background:#c0e6d1}
+.add-exercise-area{margin-top:8px;border:2px dashed var(--border);border-radius:var(--r);padding:14px;display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;transition:all .15s;color:var(--tm);font-size:13px;font-weight:600}
+.add-exercise-area:hover{border-color:var(--a);background:var(--al);color:var(--a)}
+.time-summary{margin-top:10px;padding:10px 14px;background:var(--al);border-radius:var(--rs);border:1.5px solid var(--a);font-size:13px;display:none}
+.time-summary.warn{background:var(--a2l);border-color:var(--a2)}
+
+/* ── Dashboard ── */
+.dash-row{display:grid;gap:16px;margin-bottom:16px}
+.dash-r2{grid-template-columns:1fr 1fr}
+.dash-r3{grid-template-columns:1fr 1fr 1fr}
+
+/* Period tabs */
+.period-tabs{display:flex;gap:3px;background:var(--surface2);border-radius:var(--rs);padding:3px}
+.period-tab{flex:1;padding:5px 0;border:none;background:none;border-radius:6px;font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:600;color:var(--tm);cursor:pointer;transition:all .15s}
+.period-tab.active{background:var(--surface);color:var(--tp);box-shadow:var(--sh1)}
+
+/* Column chart */
+.col-chart{display:flex;align-items:flex-end;gap:3px;height:100%;padding-top:4px}
+.col-chart-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;height:100%;justify-content:flex-end}
+.col-bar-wrap{width:100%;display:flex;flex-direction:column;justify-content:flex-end;flex:1}
+.col-bar-stack{width:100%;display:flex;flex-direction:column;justify-content:flex-end;gap:1px}
+.col-bar-segment{width:100%;min-height:2px;transition:height .5s cubic-bezier(.4,0,.2,1)}
+.col-bar-segment:first-child{border-radius:4px 4px 0 0}
+.col-label{font-size:10px;color:var(--tm);font-family:'DM Mono',monospace;white-space:nowrap}
+.col-val{font-size:10px;color:var(--ts);font-family:'DM Mono',monospace;font-weight:600}
+
+/* Horizontal bar */
+.hbar-list{display:flex;flex-direction:column;gap:9px}
+.hbar-row{display:flex;align-items:center;gap:9px}
+.hbar-label{font-size:12px;color:var(--ts);width:66px;text-align:right;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hbar-track{flex:1;height:8px;background:var(--surface2);border-radius:100px;overflow:hidden}
+.hbar-fill{height:100%;border-radius:100px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.hbar-val{font-size:11px;font-family:'DM Mono',monospace;color:var(--ts);width:34px;flex-shrink:0;text-align:right}
+
+/* Donut */
+.donut-chart{position:relative;width:140px;height:140px;margin:0 auto 14px}
+.donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+.donut-center-val{font-size:22px;font-weight:700;font-family:'DM Mono',monospace;line-height:1}
+.donut-center-label{font-size:10px;color:var(--tm);margin-top:2px}
+.donut-tooltip{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;transition:opacity .15s;pointer-events:none;text-align:center}
+.donut-tooltip-type{font-size:13px;font-weight:700;line-height:1.2}
+.donut-tooltip-count{font-size:11px;color:var(--ts);margin-top:3px}
+.donut-tooltip-pct{font-size:18px;font-weight:700;font-family:'DM Mono',monospace;line-height:1}
+.donut-hover .donut-center{opacity:0}
+.donut-hover .donut-tooltip{opacity:1}
+.donut-slice{cursor:pointer;transition:opacity .15s}
+.donut-slice:hover{opacity:.85}
+.legend{display:flex;flex-direction:column;gap:5px}
+.legend-item{display:flex;align-items:center;justify-content:space-between;font-size:12px}
+.legend-dot{width:7px;height:7px;border-radius:50%;margin-right:5px;flex-shrink:0}
+.legend-name{display:flex;align-items:center;color:var(--ts)}
+.legend-count{font-family:'DM Mono',monospace;font-weight:600}
+
+/* Sparkline */
+.sparkline-svg{width:100%;overflow:visible}
+
+/* Monthly bar chart */
+.mbar-wrap{display:flex;align-items:flex-end;gap:5px;height:90px;padding:0 2px}
+.mbar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;position:relative}
+.mbar-col:hover .mbar-fill{filter:brightness(1.1);transform:scaleY(1.04);transform-origin:bottom}
+.mbar-col.active-month .mbar-fill{outline:2px solid var(--a);outline-offset:2px}
+.mbar-track{width:100%;flex:1;display:flex;align-items:flex-end;border-radius:6px 6px 0 0;overflow:hidden}
+.mbar-fill{width:100%;border-radius:6px 6px 0 0;transition:height .5s cubic-bezier(.4,0,.2,1),filter .15s,transform .15s;min-height:3px}
+.mbar-val{font-size:10px;font-family:'DM Mono',monospace;font-weight:700;color:var(--ts);height:14px;display:flex;align-items:flex-end}
+.mbar-lbl{font-size:10px;color:var(--tm);font-family:'DM Mono',monospace;padding-bottom:2px}
+.mbar-lbl.cur{color:var(--a);font-weight:700}
+
+/* bar tooltip */
+.mbar-tooltip{
+  position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);
+  background:var(--tp);color:white;border-radius:7px;padding:7px 11px;
+  font-size:12px;white-space:nowrap;pointer-events:none;
+  box-shadow:var(--sh2);z-index:20;
+  opacity:0;transition:opacity .15s;
+}
+.mbar-tooltip::after{
+  content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);
+  border:5px solid transparent;border-top-color:var(--tp);
+}
+.mbar-col:hover .mbar-tooltip{opacity:1}
+
+/* Month grid */
+.month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.mgd{aspect-ratio:1;border-radius:var(--rs);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;border:1.5px solid var(--border);position:relative;overflow:hidden}
+.mgd.has-data{border-color:transparent}
+.mgd.empty-day{background:var(--surface2);color:var(--tm);opacity:.4}
+.mgd.rest-day{background:var(--surface);color:var(--tm)}
+.mgd-num{font-family:'DM Mono',monospace;font-weight:700;line-height:1}
+.mgd-types{font-size:9px;margin-top:1px;line-height:1}
+.mgd.today-cell{outline:2px solid var(--a);outline-offset:1px}
+
+/* ── Table ── */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead tr{border-bottom:2px solid var(--border)}
+th{padding:9px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--tm);letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;user-select:none}
+th.sortable{cursor:pointer;transition:color .1s}
+th.sortable:hover{color:var(--tp)}
+th.sort-asc::after{content:' ↑';color:var(--a)}
+th.sort-desc::after{content:' ↓';color:var(--a)}
+td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--tp);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tbody tr{transition:background .1s}
+tbody tr:hover{background:var(--surface2)}
+.session-row td{background:var(--surface2);font-size:12px;padding:6px 12px;border-top:2px solid var(--border)}
+.session-row:first-child td{border-top:none}
+.session-row-data td{background:var(--surface2)}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:100px;font-size:11px;font-weight:600;white-space:nowrap}
+.action-btns{display:flex;gap:4px;opacity:0;transition:opacity .15s}
+tr:hover .action-btns{opacity:1}
+
+/* ── Search ── */
+.search-bar{display:flex;gap:8px;margin-bottom:14px;align-items:center}
+.search-wrap{position:relative;flex:1}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--tm);pointer-events:none}
+.search-input{padding:8px 12px 8px 32px;border:1.5px solid var(--border);border-radius:var(--rs);font-family:'Noto Sans KR',sans-serif;font-size:13px;width:100%;outline:none;background:var(--surface);color:var(--tp);transition:border-color .15s}
+.search-input:focus{border-color:var(--a)}
+
+/* ── Edit Modal ── */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-backdrop.show{display:flex}
+.modal{background:var(--surface);border-radius:var(--r);box-shadow:var(--sh3);padding:24px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;animation:fadeSlide .2s ease}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.modal-title{font-size:16px;font-weight:700}
+.modal-close{width:30px;height:30px;border:none;background:var(--surface2);border-radius:6px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;color:var(--ts)}
+.modal-close:hover{background:var(--border)}
+.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-grid.g3{grid-template-columns:1fr 1fr 1fr}
+.modal-grid.g1{grid-template-columns:1fr}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+
+/* ── Exercise type manager ── */
+.type-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--rs);transition:border-color .15s}
+.type-row:hover{border-color:var(--a)}
+.type-name{font-size:13px;font-weight:600}
+.type-cat{font-size:11px;color:var(--tm);margin-top:2px}
+.type-builtin{font-size:10px;color:var(--tm);background:var(--surface2);border-radius:3px;padding:1px 5px;margin-left:4px;vertical-align:middle}
+.type-del{width:26px;height:26px;border:none;background:none;cursor:pointer;border-radius:6px;color:var(--tm);font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;padding:0}
+.type-del:hover:not(:disabled){background:var(--a2l);color:var(--a2)}
+.type-del:disabled{opacity:.25;cursor:default}
+.type-emoji-input:focus{border-color:var(--a)!important;box-shadow:0 0 0 3px var(--al)}
+.config-card{background:linear-gradient(135deg,#1A1916 0%,#2D3142 100%);border-radius:var(--r);padding:22px;color:white;margin-bottom:18px}
+.config-title{font-size:15px;font-weight:700;margin-bottom:4px}
+.config-sub{font-size:12px;opacity:.6;margin-bottom:14px}
+.config-input{background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);border-radius:var(--rs);padding:9px 13px;color:white;font-family:'DM Mono',monospace;font-size:12px;width:100%;outline:none;transition:border-color .15s}
+.config-input:focus{border-color:rgba(255,255,255,.5)}
+.config-input::placeholder{opacity:.4}
+.settings-section{margin-bottom:20px}
+.settings-section-title{font-size:13px;font-weight:700;color:var(--ts);margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--border)}
+.step-list{counter-reset:step;display:flex;flex-direction:column;gap:10px}
+.step-item{display:flex;gap:10px;align-items:flex-start;padding:12px;background:var(--surface2);border-radius:var(--rs)}
+.step-num{counter-increment:step;width:22px;height:22px;border-radius:50%;background:var(--a);color:white;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-num::before{content:counter(step)}
+.step-title{font-size:13px;font-weight:600;margin-bottom:2px}
+.step-desc{font-size:12px;color:var(--ts);line-height:1.5}
+.code-block{background:#1A1916;color:#D8EFE4;border-radius:var(--rs);padding:12px 14px;font-family:'DM Mono',monospace;font-size:11.5px;line-height:1.7;margin-top:8px;overflow-x:auto;white-space:pre}
+.tag{color:#74c69d}.kw{color:#F4A261}.str{color:#a8d8ea}.comment{color:#6B6860}
+
+/* ── Toast ── */
+.toast-container{position:fixed;bottom:22px;right:22px;display:flex;flex-direction:column;gap:7px;z-index:9999}
+.toast{background:var(--tp);color:white;padding:11px 16px;border-radius:var(--rs);font-size:13px;font-weight:500;box-shadow:var(--sh3);display:flex;align-items:center;gap:7px;animation:toastIn .25s ease;max-width:300px}
+.toast.success{background:var(--a)}.toast.error{background:var(--a2)}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes toastOut{from{opacity:1}to{opacity:0;transform:translateY(6px) scale(.95)}}
+.loading-overlay{position:fixed;inset:0;background:rgba(245,244,240,.8);display:none;align-items:center;justify-content:center;z-index:9998;backdrop-filter:blur(2px)}
+.loading-overlay.show{display:flex}
+.spinner{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--a);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Empty / Misc ── */
+.empty-state{text-align:center;padding:40px 20px;color:var(--tm)}
+.empty-icon{font-size:36px;margin-bottom:10px}
+.empty-title{font-size:14px;font-weight:600;color:var(--ts);margin-bottom:5px}
+.empty-sub{font-size:12px}
+.divider{height:1px;background:var(--border);margin:14px 0}
+
+/* ── Mobile / Responsive ── */
+.mobile-menu-btn{display:none;width:36px;height:36px;align-items:center;justify-content:center;border:1.5px solid var(--border);border-radius:var(--rs);background:var(--surface);cursor:pointer;color:var(--tp);flex-shrink:0}
+.overlay-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:99;-webkit-tap-highlight-color:transparent}
+.overlay-bg.show{display:block}
+
+/* ── touch: always show action buttons (no hover on touch) ── */
+@media(hover:none){
+  .action-btns{opacity:1}
+}
+
+/* ── Tablet: 600px – 1024px ── */
+@media(max-width:1024px){
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+}
+
+/* ── Tablet narrow + Mobile: ≤ 768px ── */
+@media(max-width:768px){
+  :root{--r:11px;--rs:7px}
+  body{font-size:13px}
+
+  /* layout */
+  .app-shell{grid-template-columns:1fr}
+  .sidebar{position:fixed;left:-220px;top:0;z-index:100;transition:left .28s cubic-bezier(.4,0,.2,1);height:100vh;width:220px;overflow-y:auto}
+  .sidebar.open{left:0;box-shadow:var(--sh3)}
+  .main-header{grid-column:1;padding:12px 16px}
+  .main-content{grid-column:1;padding:14px 14px 80px}
+
+  /* header */
+  .page-title{font-size:15px}
+  .mobile-menu-btn{display:flex!important}
+
+  /* stats */
+  .stats-grid{grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:12px}
+  .stat-card{padding:13px 14px}
+  .stat-value{font-size:20px}
+  .stat-label{font-size:9px}
+
+  /* cards */
+  .card{padding:14px;border-radius:var(--r);margin-bottom:12px}
+  .card-title{font-size:13px;margin-bottom:10px}
+
+  /* dashboard grids */
+  .dash-row{gap:12px;margin-bottom:12px}
+  .dash-r2,.dash-r3{grid-template-columns:1fr}
+
+  /* weekly chart */
+  #weeklyChart{height:80px!important}
+
+  /* donut: shrink slightly */
+  .donut-chart{width:120px!important;height:120px!important}
+  .donut-chart svg{width:120px!important;height:120px!important}
+
+  /* session header */
+  .session-header{grid-template-columns:1fr 1fr;gap:10px;padding:12px 14px}
+  .session-header>div:last-child{grid-column:1/-1}
+
+  /* exercise fields */
+  .fields-grid{grid-template-columns:repeat(2,1fr);gap:9px}
+  .fields-grid.g2{grid-template-columns:repeat(2,1fr)}
+
+  /* set rows */
+  .set-row{flex-wrap:wrap;gap:5px}
+  .set-row input{width:60px!important}
+
+  /* table: horizontal scroll + compact */
+  .table-wrap{-webkit-overflow-scrolling:touch}
+  th,td{padding:7px 9px;font-size:12px}
+  .badge{font-size:10px;padding:2px 6px}
+
+  /* search bar: stack */
+  .search-bar{flex-wrap:wrap}
+  .search-wrap{flex:1 1 100%}
+
+  /* modal */
+  .modal{padding:16px;border-radius:var(--r)}
+  .modal-grid,.modal-grid.g3{grid-template-columns:1fr}
+
+  /* toast */
+  .toast-container{bottom:16px;right:12px;left:12px}
+  .toast{max-width:100%}
+
+  /* month grid: smaller gaps */
+  .month-grid{gap:2px}
+  .mgd{border-radius:5px}
+
+  /* hbar label */
+  .hbar-label{width:52px;font-size:11px}
+  .hbar-val{width:50px;font-size:10px}
+
+  /* col chart labels */
+  .col-label{font-size:9px}
+  .col-val{font-size:9px}
+}
+
+/* ── Small phone: ≤ 400px ── */
+@media(max-width:400px){
+  .stats-grid{grid-template-columns:repeat(2,1fr);gap:7px}
+  .stat-card{padding:10px 11px}
+  .stat-value{font-size:18px}
+  .main-content{padding:10px 10px 70px}
+  .session-header{grid-template-columns:1fr}
+  .fields-grid{grid-template-columns:1fr}
+  .card{padding:12px}
+  .donut-chart{width:100px!important;height:100px!important}
+  .donut-chart svg{width:100px!important;height:100px!important}
+  th,td{padding:6px 7px;font-size:11px}
+}
+
+/* ── Bottom nav bar for mobile ── */
+.bottom-nav{
+  display:none;
+  position:fixed;bottom:0;left:0;right:0;
+  background:var(--surface);
+  border-top:1px solid var(--border);
+  padding:8px 0 max(8px,env(safe-area-inset-bottom));
+  z-index:50;
+  box-shadow:0 -2px 10px rgba(0,0,0,.07);
+}
+.bottom-nav-inner{display:grid;grid-template-columns:repeat(4,1fr)}
+.bottom-nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 0;border:none;background:none;cursor:pointer;color:var(--tm);font-family:'Noto Sans KR',sans-serif;font-size:10px;font-weight:500;transition:color .15s;-webkit-tap-highlight-color:transparent}
+.bottom-nav-item.active{color:var(--a)}
+.bottom-nav-item span.icon{font-size:20px;line-height:1}
+@media(max-width:768px){
+  .bottom-nav{display:block}
+  /* hide sidebar toggle button on very small — use bottom nav instead */
+}
+</style>
+</head>
+<body>
+
+<div class="overlay-bg" id="overlayBg" onclick="closeSidebar()"></div>
+<div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div></div>
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Bottom navigation (mobile) -->
+<nav class="bottom-nav" id="bottomNav">
+  <div class="bottom-nav-inner" style="grid-template-columns:repeat(5,1fr)">
+    <button class="bottom-nav-item active" onclick="goTo('dashboard',null,this)" id="bn-dashboard">
+      <span class="icon">📊</span><span>대시보드</span>
+    </button>
+    <button class="bottom-nav-item" onclick="goTo('input',null,this)" id="bn-input">
+      <span class="icon">✏️</span><span>운동입력</span>
+    </button>
+    <button class="bottom-nav-item" onclick="goTo('history',null,this)" id="bn-history">
+      <span class="icon">📋</span><span>기록조회</span>
+    </button>
+    <button class="bottom-nav-item" onclick="goTo('types',null,this)" id="bn-types">
+      <span class="icon">🏃</span><span>종목설정</span>
+    </button>
+    <button class="bottom-nav-item" onclick="goTo('settings',null,this)" id="bn-settings">
+      <span class="icon">⚙️</span><span>API설정</span>
+    </button>
+  </div>
+</nav>
+
+<!-- Edit Modal -->
+<div class="modal-backdrop" id="editModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">✏️ 기록 수정</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modalBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">취소</button>
+      <button class="btn btn-primary" onclick="saveEdit()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 확인 다이얼로그 -->
+<div class="modal-backdrop" id="confirmModal">
+  <div class="modal" style="max-width:340px">
+    <div class="modal-header">
+      <div class="modal-title" id="confirmTitle">확인</div>
+      <button class="modal-close" onclick="closeConfirm(false)">✕</button>
+    </div>
+    <div style="padding:16px 20px;font-size:14px;color:var(--ts);line-height:1.6" id="confirmMsg"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeConfirm(false)">취소</button>
+      <button class="btn btn-danger" id="confirmOkBtn" onclick="closeConfirm(true)">삭제</button>
+    </div>
+  </div>
+</div>
+
+<div class="app-shell">
+
+  <!-- ═══ SIDEBAR ═══ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">
+        <svg viewBox="0 0 24 24"><path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/></svg>
+      </div>
+      <div class="logo-title">운동기록</div>
+      <div class="logo-sub">Workout Tracker v1.2</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-label">메뉴</div>
+      <button class="nav-item active" onclick="goTo('dashboard',this)"><span>📊</span> 대시보드</button>
+      <button class="nav-item" onclick="goTo('input',this)"><span>✏️</span> 운동 입력</button>
+      <button class="nav-item" onclick="goTo('history',this)"><span>📋</span> 기록 조회</button>
+      <div class="nav-label">설정</div>
+      <button class="nav-item" onclick="goTo('types',this)"><span>🏃</span> 종목 설정</button>
+      <button class="nav-item" onclick="goTo('settings',this)"><span>⚙️</span> API 설정</button>
+    </nav>
+  </aside>
+
+  <!-- ═══ HEADER ═══ -->
+  <header class="main-header">
+    <div style="display:flex;align-items:center;gap:11px">
+      <button class="mobile-menu-btn" onclick="openSidebar()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="page-title" id="headerTitle">대시보드</div>
+    </div>
+    <div style="display:flex;gap:7px;align-items:center">
+      <button class="btn btn-ghost" onclick="goTo('input',null)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>운동 추가
+      </button>
+    </div>
+  </header>
+
+  <!-- ═══ MAIN ═══ -->
+  <main class="main-content">
+
+    <!-- ── DASHBOARD ── -->
+    <section id="sec-dashboard" class="page-section active">
+      <div class="stats-grid">
+
+        <!-- 카드1: 이번 달 운동일 + 이번 달 총 거리 -->
+        <div class="stat-card">
+          <div class="stat-accent" style="background:var(--a)"></div>
+          <div style="display:flex;gap:12px;align-items:flex-start">
+            <div style="flex:1;min-width:0">
+              <div class="stat-label">이번 달 운동일</div>
+              <div style="display:flex;align-items:baseline;gap:3px">
+                <div class="stat-value" id="stat-count">0</div>
+                <div class="stat-unit">일</div>
+              </div>
+              <div class="trend-compare" id="stat-count-trend"></div>
+            </div>
+            <div style="width:1px;background:var(--border);align-self:stretch;flex-shrink:0"></div>
+            <div style="flex:1;min-width:0">
+              <div class="stat-label">이번 달 총 거리</div>
+              <div style="display:flex;align-items:baseline;gap:3px">
+                <div class="stat-value" id="stat-dist">0</div>
+                <div class="stat-unit">km</div>
+              </div>
+              <div class="trend-compare" id="stat-dist-trend"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 카드2: 총 소요시간 + 순 운동시간 -->
+        <div class="stat-card">
+          <div class="stat-accent" style="background:var(--a2)"></div>
+          <div style="display:flex;gap:12px;align-items:flex-start">
+            <div style="flex:1;min-width:0">
+              <div class="stat-label">총 소요시간</div>
+              <div style="display:flex;align-items:baseline;gap:3px">
+                <div class="stat-value" id="stat-total-time">0</div>
+                <div class="stat-unit" id="stat-total-time-unit">분</div>
+              </div>
+              <div class="trend-compare" id="stat-total-time-trend"></div>
+            </div>
+            <div style="width:1px;background:var(--border);align-self:stretch;flex-shrink:0"></div>
+            <div style="flex:1;min-width:0">
+              <div class="stat-label">순 운동시간</div>
+              <div style="display:flex;align-items:baseline;gap:3px">
+                <div class="stat-value" id="stat-time">0</div>
+                <div class="stat-unit" id="stat-time-unit">분</div>
+              </div>
+              <div class="trend-compare" id="stat-time-trend"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 카드3: 운동 밀도(이번달/올해) + 올해 총 운동일 -->
+        <div class="stat-card">
+          <div class="stat-accent" style="background:var(--a3)"></div>
+          <div style="display:flex;gap:12px;align-items:flex-start">
+            <!-- 이번달 밀도 -->
+            <div style="flex:1;min-width:0">
+              <div class="stat-label">이번 달 밀도</div>
+              <div style="display:flex;align-items:baseline;gap:2px">
+                <div class="stat-value" style="font-size:20px" id="stat-density">—</div>
+                <div class="stat-unit" id="stat-density-unit">%</div>
+              </div>
+              <div class="stat-sub" id="stat-density-sub"></div>
+            </div>
+            <div style="width:1px;background:var(--border);align-self:stretch;flex-shrink:0"></div>
+            <!-- 올해 밀도 -->
+            <div style="flex:1;min-width:0">
+              <div class="stat-label">올해 밀도</div>
+              <div style="display:flex;align-items:baseline;gap:2px">
+                <div class="stat-value" style="font-size:20px" id="stat-density-year">—</div>
+                <div class="stat-unit" id="stat-density-year-unit">%</div>
+              </div>
+              <div class="stat-sub" id="stat-density-year-sub"></div>
+            </div>
+            <div style="width:1px;background:var(--border);align-self:stretch;flex-shrink:0"></div>
+            <!-- 올해 총 운동일 -->
+            <div style="flex:1;min-width:0">
+              <div class="stat-label">올해 총 운동일</div>
+              <div style="display:flex;align-items:baseline;gap:3px">
+                <div class="stat-value" id="stat-year">0</div>
+                <div class="stat-unit">일</div>
+              </div>
+              <div class="stat-sub" id="stat-year-sub" style="margin-top:3px"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 카드4: 이번 달 비용 + 올해 총 비용 -->
+        <div class="stat-card">
+          <div class="stat-accent" style="background:var(--y)"></div>
+          <div style="display:flex;gap:12px;align-items:flex-start">
+            <div style="flex:1;min-width:0">
+              <div class="stat-label">이번 달 비용</div>
+              <div style="display:flex;align-items:baseline;gap:2px">
+                <div class="stat-value" style="font-size:20px" id="stat-cost-month">—</div>
+                <div class="stat-unit">원</div>
+              </div>
+              <div class="trend-compare" id="stat-cost-month-trend"></div>
+            </div>
+            <div style="width:1px;background:var(--border);align-self:stretch;flex-shrink:0"></div>
+            <div style="flex:1;min-width:0">
+              <div class="stat-label">올해 총 비용</div>
+              <div style="display:flex;align-items:baseline;gap:2px">
+                <div class="stat-value" style="font-size:20px" id="stat-cost-year">—</div>
+                <div class="stat-unit">원</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 달력 + 종목분포 -->
+      <div class="dash-row dash-r2">
+        <!-- 이번 달 운동 달력 (월 이동 가능) -->
+        <div class="card" style="margin-bottom:0">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div class="card-title" style="margin-bottom:0"><span>📅</span> 운동 달력</div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <button class="cal-btn" onclick="dashCalPrev()" style="background:var(--surface2)">‹</button>
+              <span style="font-size:12px;font-weight:600;min-width:64px;text-align:center" id="dashCalLabel"></span>
+              <button class="cal-btn" onclick="dashCalNext()" style="background:var(--surface2)">›</button>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:5px">
+            <div style="font-size:9px;font-weight:700;color:var(--tm);text-align:center">일</div>
+            <div style="font-size:9px;font-weight:700;color:var(--tm);text-align:center">월</div>
+            <div style="font-size:9px;font-weight:700;color:var(--tm);text-align:center">화</div>
+            <div style="font-size:9px;font-weight:700;color:var(--tm);text-align:center">수</div>
+            <div style="font-size:9px;font-weight:700;color:var(--tm);text-align:center">목</div>
+            <div style="font-size:9px;font-weight:700;color:var(--tm);text-align:center">금</div>
+            <div style="font-size:9px;font-weight:700;color:var(--tm);text-align:center">토</div>
+          </div>
+          <div class="month-grid" id="monthGridDash"></div>
+          <div style="margin-top:8px;display:flex;gap:5px;flex-wrap:wrap;font-size:11px;color:var(--tm)" id="monthGridLegend"></div>
+          <!-- 요일별 운동 패턴 -->
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+            <div style="font-size:11px;font-weight:700;color:var(--tm);letter-spacing:.4px;text-transform:uppercase;margin-bottom:8px">요일별 패턴 <span style="font-weight:400;text-transform:none;font-size:10px">(최근 3개월)</span></div>
+            <div id="dowPattern" style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px"></div>
+          </div>
+        </div>
+
+        <!-- 종목 분포 -->
+        <div class="card" style="margin-bottom:0">
+          <div class="card-title"><span>🏋️</span> 전체 종목 분포</div>
+          <div class="donut-chart" id="donutChart">
+            <svg width="140" height="140" viewBox="0 0 36 36" id="donutSvg"><circle cx="18" cy="18" r="13" fill="none" stroke="var(--surface2)" stroke-width="6"/></svg>
+            <div class="donut-center" id="donutCenter">
+              <div class="donut-center-val" id="donutTotal">0</div>
+              <div class="donut-center-label">총 종목</div>
+            </div>
+            <div class="donut-tooltip" id="donutTooltip">
+              <div class="donut-tooltip-pct" id="donutTipPct"></div>
+              <div class="donut-tooltip-type" id="donutTipType"></div>
+              <div class="donut-tooltip-count" id="donutTipCount"></div>
+            </div>
+          </div>
+          <div class="legend" id="exerciseLegend"></div>
+        </div>
+      </div>
+
+      <!-- 종목별 운동시간 + 월별 추이 -->
+      <div class="dash-row dash-r2" style="margin-top:16px">
+        <!-- 종목별 운동시간 — 월 이동 가능 -->
+        <div class="card" style="margin-bottom:0">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div class="card-title" style="margin-bottom:0"><span>⏱</span> 종목별 운동시간</div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <button class="cal-btn" onclick="barChartPrev()" style="background:var(--surface2)">‹</button>
+              <span style="font-size:12px;font-weight:600;min-width:54px;text-align:center" id="barChartLabel"></span>
+              <button class="cal-btn" onclick="barChartNext()" style="background:var(--surface2)">›</button>
+            </div>
+          </div>
+          <div class="hbar-list" id="barChart"></div>
+        </div>
+
+        <!-- 월별 운동일 추이 -->
+        <div class="card" style="margin-bottom:0">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+            <div class="card-title" style="margin-bottom:0"><span>📈</span> 월별 운동 추이</div>
+            <div style="display:flex;gap:10px;font-size:11px;color:var(--ts)">
+              <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:var(--a3);display:inline-block;opacity:.7"></span>운동일</span>
+              <span style="display:flex;align-items:center;gap:4px"><span style="width:16px;height:2px;background:var(--a2);display:inline-block"></span>순 운동시간</span>
+            </div>
+          </div>
+          <div id="monthlyBarChart" style="position:relative"></div>
+        </div>
+      </div>
+
+      <!-- 최근 세션 (정렬 가능) -->
+      <div class="card" style="margin-top:16px">
+        <div class="card-title"><span>📝</span> 최근 세션</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="sortable" onclick="sortRecent('date')">날짜</th>
+                <th>총소요</th>
+                <th class="sortable" onclick="sortRecent('type')">종목</th>
+                <th class="sortable" onclick="sortRecent('actualTime')">운동시간</th>
+                <th>거리/세부</th>
+              </tr>
+            </thead>
+            <tbody id="recentTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── INPUT ── -->
+    <section id="sec-input" class="page-section">
+      <div class="card">
+        <div class="card-title"><span>✏️</span> 운동 세션 기록</div>
+        <div class="session-header">
+          <div>
+            <div class="session-header-label">날짜 <span class="required">*</span></div>
+            <input type="date" id="f-date" class="form-control">
+          </div>
+          <div>
+            <div class="session-header-label">총 소요시간 (분) <span class="required">*</span></div>
+            <input type="number" id="f-totalTime" class="form-control" placeholder="예: 90" min="1" oninput="updateTimeSummary()">
+            <div style="font-size:11px;color:var(--tm);margin-top:3px">이동·준비·쉬는 시간 포함</div>
+          </div>
+          <div>
+            <div class="session-header-label">세션 메모</div>
+            <input type="text" id="f-memo" class="form-control" placeholder="오늘 운동 한 줄 메모...">
+          </div>
+
+        </div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:9px;color:var(--ts)">
+          운동 종목 <span class="required">*</span>
+          <span style="font-size:11px;font-weight:400;color:var(--tm);margin-left:5px">종목마다 개별 운동시간을 입력하세요</span>
+        </div>
+        <div class="exercises-list" id="exercisesList"></div>
+        <div class="add-exercise-area" onclick="addExercise()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          종목 추가하기
+        </div>
+        <div class="time-summary" id="timeSummary">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-weight:600;color:var(--a)">⏱ 시간 합계</span>
+            <span style="font-family:'DM Mono',monospace;font-weight:700;font-size:13px" id="timeSummaryText"></span>
+          </div>
+        </div>
+        <div style="margin-top:18px;display:flex;gap:7px;justify-content:flex-end">
+          <button class="btn btn-secondary" onclick="resetForm()">초기화</button>
+          <button class="btn btn-primary" onclick="submitForm()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>저장하기
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── HISTORY ── -->
+    <section id="sec-history" class="page-section">
+      <div class="card">
+        <div class="search-bar">
+          <div class="search-wrap">
+            <span class="search-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+            <input class="search-input" id="searchInput" placeholder="운동명, 날짜, 메모로 검색..." oninput="filterHistory()">
+          </div>
+          <select class="form-control" style="width:auto;padding:8px 12px" id="filterType" onchange="filterHistory()">
+            <option value="">전체 종류</option>
+          </select>
+          <button class="btn btn-secondary" onclick="loadData()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>새로고침
+          </button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="sortable" onclick="sortHistory('date')" id="hth-date">날짜</th>
+                <th class="sortable" onclick="sortHistory('totalTime')" id="hth-totalTime">총소요</th>
+                <th class="sortable" onclick="sortHistory('type')" id="hth-type">종목</th>
+                <th class="sortable" onclick="sortHistory('actualTime')" id="hth-actualTime">운동시간</th>
+                <th>거리/세부</th>
+                <th>메모</th>
+                <th>비용</th>
+                <th style="width:80px">관리</th>
+              </tr>
+            </thead>
+            <tbody id="historyTableBody"><tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">데이터 없음</div><div class="empty-sub">API 설정 후 새로고침하거나 운동을 입력해주세요</div></div></td></tr></tbody>
+          </table>
+        </div>
+        <div id="historyCount" style="text-align:right;font-size:12px;color:var(--tm);margin-top:9px"></div>
+      </div>
+    </section>
+
+    <!-- ── TYPES ── -->
+    <section id="sec-types" class="page-section">
+      <div class="card">
+        <div class="card-title"><span>🏃</span> 운동 종목 관리</div>
+        <p style="font-size:12px;color:var(--ts);margin-bottom:16px;line-height:1.7">종목의 이모지·색상 변경, 새 종목 추가, 순서 변경이 가능합니다.<br>삭제된 종목의 기존 기록은 대시보드에서 <strong>기타</strong>로 표시됩니다.</p>
+
+        <!-- 현재 종목 목록 -->
+        <div id="typeList" style="display:flex;flex-direction:column;gap:7px;margin-bottom:20px"></div>
+
+        <!-- 새 종목 추가 폼 -->
+        <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--r);padding:18px">
+          <div style="font-size:13px;font-weight:700;color:var(--ts);margin-bottom:14px">➕ 새 종목 추가</div>
+          <div style="display:grid;grid-template-columns:1fr 72px;gap:10px;margin-bottom:12px">
+            <div class="form-group">
+              <label class="form-label">종목명 <span class="required">*</span></label>
+              <input type="text" id="newTypeName" class="form-control" placeholder="예: 자전거" maxlength="12">
+            </div>
+            <div class="form-group">
+              <label class="form-label">이모지</label>
+              <input type="text" id="newTypeEmoji" class="form-control" placeholder="🚴" maxlength="4" style="font-size:20px;text-align:center;padding:6px">
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:12px">
+            <label class="form-label">입력 방식 <span class="required">*</span></label>
+            <select id="newTypeCategory" class="form-control">
+              <option value="simple">시간만 (기본)</option>
+              <option value="distance">시간 + 거리 (km)</option>
+              <option value="swim">시간 + 거리 (m)</option>
+              <option value="hiking">산이름 + 시간 + 거리</option>
+              <option value="sets">세트 입력</option>
+            </select>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+            <div class="form-group">
+              <label class="form-label">진한 색 <span style="font-size:10px;color:var(--tm)">(막대·뱃지)</span></label>
+              <input type="color" id="newTypeColor" value="#2D6A4F" class="form-control" style="height:40px;padding:4px;cursor:pointer">
+            </div>
+            <div class="form-group">
+              <label class="form-label">연한 배경 <span style="font-size:10px;color:var(--tm)">(달력·뱃지)</span></label>
+              <input type="color" id="newTypeLight" value="#D8EFE4" class="form-control" style="height:40px;padding:4px;cursor:pointer">
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+            <span style="font-size:12px;color:var(--tm);flex-shrink:0">미리보기</span>
+            <span id="typePreview" class="badge" style="background:#D8EFE4;color:#1A1916;font-size:13px;padding:5px 12px">🚴 새 종목</span>
+          </div>
+          <button class="btn btn-primary" onclick="addUserType()" style="width:100%">종목 추가</button>
+        </div>
+
+        <div style="margin-top:12px;display:flex;justify-content:flex-end">
+          <button class="btn btn-secondary btn-sm" onclick="resetTypes()">기본 종목으로 초기화</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── SETTINGS ── -->
+    <section id="sec-settings" class="page-section">
+      <div class="config-card">
+        <div class="config-title">🔗 Google Apps Script API 설정</div>
+        <div class="config-sub">웹 앱 URL을 입력하여 구글 스프레드시트와 연동하세요</div>
+        <div style="display:flex;gap:8px">
+          <input class="config-input" id="apiUrl" placeholder="https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec" style="flex:1">
+          <button class="btn btn-primary" onclick="saveApiUrl()">저장</button>
+        </div>
+        <div style="margin-top:9px;display:flex;align-items:center;gap:10px">
+          <span style="font-size:12px;opacity:.6" id="apiStatus">URL이 설정되지 않았습니다</span>
+          <button class="btn btn-secondary btn-sm" onclick="loadData()" style="margin-left:auto">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> 데이터 불러오기
+          </button>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">📌 Google Apps Script 설정 가이드</div>
+        <div class="step-list">
+          <div class="step-item"><div class="step-num"></div><div><div class="step-title">스프레드시트 생성</div><div class="step-desc">새 스프레드시트 만들고 시트 이름을 <strong>tracker</strong>로 설정</div></div></div>
+          <div class="step-item"><div class="step-num"></div><div><div class="step-title">Apps Script 코드 붙여넣기</div>
+            <div class="step-desc" style="margin-bottom:10px">스프레드시트 상단 메뉴에서 <strong>확장 프로그램 → Apps Script</strong> 클릭</div>
+            <div style="background:var(--surface2);border-radius:8px;padding:12px 14px;margin-bottom:10px;font-size:12px;line-height:1.8;color:var(--ts)">
+              <div style="font-weight:700;margin-bottom:6px;color:var(--a)">📋 붙여넣기 방법</div>
+              <div>① Apps Script 편집기가 열리면 왼쪽에 <code>코드.gs</code> 파일이 보입니다</div>
+              <div>② 편집기 안의 기존 내용을 <strong>전체 선택(Ctrl+A)</strong> 후 <strong>삭제</strong></div>
+              <div>③ 아래 코드를 <strong>복사</strong>하여 붙여넣기</div>
+              <div>④ 상단의 💾 <strong>저장</strong> 버튼 클릭 (또는 Ctrl+S)</div>
+            </div>
+            <div style="background:var(--surface2);border-radius:8px;padding:12px 14px;margin-bottom:10px;font-size:12px;line-height:1.8;color:var(--ts)">
+              <div style="font-weight:700;margin-bottom:6px;color:var(--y)">⚠️ 주의사항</div>
+              <div>• 파일명(<code>코드.gs</code>)은 변경하지 마세요</div>
+              <div>• 코드 저장 후 바로 배포하지 말고, 먼저 <strong>3단계(웹 앱 배포)</strong>를 진행하세요</div>
+              <div>• 코드를 수정했다면 기존 배포를 수정하는 게 아니라 <strong>새 버전으로 재배포</strong>해야 반영됩니다</div>
+              <div>• CORS 오류가 발생하면 배포 설정에서 액세스를 <strong>모든 사용자(익명 포함)</strong>로 재확인하세요</div>
+            </div>
+          <div class="code-block"><span class="comment">// 운동기록 트래커 API v2.0</span>
+<span class="kw">const</span> SHEET = <span class="str">'tracker'</span>;
+
+<span class="kw">function</span> <span class="tag">formatDate</span>(v) {
+  <span class="kw">if</span> (v <span class="kw">instanceof</span> Date) {
+    <span class="kw">return</span> Utilities.formatDate(v, Session.getScriptTimeZone(), <span class="str">'yyyy-MM-dd'</span>);
+  }
+  <span class="kw">return</span> String(v);
+}
+
+<span class="kw">function</span> <span class="tag">doGet</span>(e) {
+  <span class="kw">const</span> sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET);
+  <span class="kw">const</span> data = sheet.getDataRange().getValues();
+  <span class="kw">const</span> json = data.length &lt;= 1 ? [] : (() => {
+    <span class="kw">const</span> [h, ...rows] = data;
+    <span class="kw">return</span> rows.map(r => Object.fromEntries(h.map((k, i) => {
+      <span class="kw">const</span> v = r[i];
+      <span class="kw">return</span> [k, k === <span class="str">'날짜'</span> ? formatDate(v) : v];
+    })));
+  })();
+  <span class="kw">const</span> cb = e &amp;&amp; e.parameter &amp;&amp; e.parameter.callback;
+  <span class="kw">if</span> (cb) {
+    <span class="kw">return</span> ContentService
+      .createTextOutput(cb + <span class="str">'('</span> + JSON.stringify(json) + <span class="str">')'</span>)
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  <span class="kw">return</span> ContentService
+    .createTextOutput(JSON.stringify(json))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+<span class="kw">function</span> <span class="tag">doPost</span>(e) {
+  <span class="kw">try</span> {
+    <span class="kw">const</span> sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET);
+    <span class="kw">const</span> raw = e.postData.contents;
+    <span class="kw">const</span> session = JSON.parse(raw);
+    <span class="kw">if</span> (sheet.getLastRow() &lt; 1)
+      sheet.appendRow([<span class="str">'날짜'</span>,<span class="str">'총소요시간(분)'</span>,<span class="str">'세션메모'</span>,<span class="str">'비용(원)'</span>,<span class="str">'운동종류'</span>,<span class="str">'운동시간(분)'</span>,<span class="str">'거리(km/m)'</span>,<span class="str">'세트정보'</span>,<span class="str">'산이름'</span>,<span class="str">'종목메모'</span>,<span class="str">'입력일시'</span>]);
+    <span class="kw">const</span> now = <span class="kw">new</span> Date().toLocaleString(<span class="str">'ko-KR'</span>);
+    session.exercises.forEach(ex =>
+      sheet.appendRow([session.date, session.totalTime, session.memo, ex.cost||<span class="str">''</span>,
+        ex.type, ex.actualTime, ex.distance, ex.sets, ex.mountain, ex.note, now])
+    );
+    <span class="kw">return</span> ContentService
+      .createTextOutput(JSON.stringify({result: <span class="str">'success'</span>}))
+      .setMimeType(ContentService.MimeType.JSON);
+  } <span class="kw">catch</span>(err) {
+    <span class="kw">return</span> ContentService
+      .createTextOutput(JSON.stringify({result: <span class="str">'error'</span>, message: err.toString()}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}</div></div></div>
+          <div class="step-item"><div class="step-num"></div><div><div class="step-title">웹 앱 배포</div>
+            <div class="step-desc" style="margin-bottom:10px">Apps Script 편집기 우측 상단 <strong>배포 → 새 배포</strong> 클릭</div>
+            <div style="background:var(--surface2);border-radius:8px;padding:12px 14px;margin-bottom:10px;font-size:12px;line-height:1.8;color:var(--ts)">
+              <div style="font-weight:700;margin-bottom:6px;color:var(--a)">📋 배포 순서</div>
+              <div>① <strong>유형 선택</strong> (⚙️ 아이콘) → <strong>웹 앱</strong> 선택</div>
+              <div>② <strong>설명</strong>: 아무 내용이나 입력 (예: v1)</div>
+              <div>③ <strong>다음 사용자로 실행</strong>: <code>나(내 Google 계정)</code></div>
+              <div>④ <strong>액세스 권한</strong>: <code>모든 사용자</code> (익명 포함)</div>
+              <div>⑤ <strong>배포</strong> 버튼 클릭</div>
+              <div>⑥ Google 계정 <strong>권한 승인</strong> 팝업 → 허용</div>
+              <div>⑦ 생성된 <strong>웹 앱 URL</strong> 복사 → 이 페이지 위 입력란에 붙여넣기 후 저장</div>
+            </div>
+            <div style="background:var(--surface2);border-radius:8px;padding:12px 14px;font-size:12px;line-height:1.8;color:var(--ts)">
+              <div style="font-weight:700;margin-bottom:6px;color:var(--y)">⚠️ 주의사항</div>
+              <div>• 권한 승인 시 <strong>"Google이 확인하지 않은 앱"</strong> 경고가 뜰 수 있습니다 → <strong>고급 → 계속</strong> 클릭</div>
+              <div>• 코드를 수정한 뒤엔 <strong>배포 → 배포 관리 → ✏️ 수정 → 버전: 새 버전</strong>으로 재배포해야 반영됩니다</div>
+              <div>• URL은 재배포해도 바뀌지 않으므로 한 번 저장하면 계속 사용 가능합니다</div>
+            </div>
+          </div></div>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">📊 스프레드시트 컬럼 구조</div>
+        <div class="table-wrap card" style="padding:0;margin-bottom:0">
+          <table>
+            <thead><tr><th>컬럼</th><th>설명</th><th>비고</th></tr></thead>
+            <tbody>
+              <tr><td><code>날짜</code></td><td>운동 날짜</td><td>세션 공통</td></tr>
+              <tr><td><code>총소요시간(분)</code></td><td>이동·준비 포함 전체 시간</td><td>세션 공통</td></tr>
+              <tr><td><code>세션메모</code></td><td>세션 전체 메모</td><td>세션 공통</td></tr>
+              <tr><td><code>비용(원)</code></td><td>해당 세션 운동 비용</td><td>세션 공통</td></tr>
+              <tr><td><code>운동종류</code></td><td>런닝머신/야외런닝/걷기/수영/등산/스트레칭/철봉/플랭크</td><td>종목별</td></tr>
+              <tr><td><code>운동시간(분)</code></td><td>해당 종목 실제 운동 시간</td><td>종목별</td></tr>
+              <tr><td><code>거리(km/m)</code></td><td>달리기·수영·등산 거리</td><td>종목별</td></tr>
+              <tr><td><code>세트정보</code></td><td>철봉·플랭크 세트 (예: 30초×5회)</td><td>철봉·플랭크만</td></tr>
+              <tr><td><code>산이름</code></td><td>등산 시 산 이름</td><td>등산만</td></tr>
+              <tr><td><code>종목메모</code></td><td>종목 개별 메모</td><td>종목별</td></tr>
+              <tr><td><code>입력일시</code></td><td>저장 시각 (자동)</td><td>자동</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  CONSTANTS & STATE
+// ═══════════════════════════════════════════════════════
+let API_URL = localStorage.getItem('workout_api_url') || '';
+let allData = JSON.parse(localStorage.getItem('workout_local_data') || '[]');
+// float id 마이그레이션: 기존 데이터의 id를 안정적인 문자열로 변환
+allData = allData.map((r, i) => ({...r, id: String(r.id).includes('.') ? 'l_migrated_'+i : String(r.id)}));
+let dashCalYear, dashCalMonth;   // dashboard calendar
+let barChartYear, barChartMonth; // bar chart month
+let exerciseItems = [], itemCounter = 0;
+let trendWeeks = 8;
+let historySortKey = 'date', historySortDir = 'desc';
+let recentSortKey  = 'date', recentSortDir  = 'desc';
+let editingId = null;
+
+// ── 기본 종목 정의 (변경 불가 기본값) ──
+// ── 색상 버전 (기본 종목 색 변경 시 올려야 localStorage 강제 갱신됨) ──
+const TYPES_VERSION = 4;
+
+const DEFAULT_TYPES = [
+  {name:'런닝머신', emoji:'🏃', color:'#E05C3A', light:'#FDEAE4', category:'distance'},
+  {name:'야외런닝',  emoji:'🌳', color:'#F4A261', light:'#FEF3E2', category:'distance'},
+  {name:'걷기',     emoji:'🚶', color:'#457B9D', light:'#DCF0FA', category:'distance'},
+  {name:'수영',     emoji:'🏊', color:'#4cc9f0', light:'#caf0f8', category:'swim'},
+  {name:'등산',     emoji:'⛰️', color:'#2D6A4F', light:'#D8EFE4', category:'hiking'},
+  {name:'스트레칭', emoji:'🧘', color:'#9B72AA', light:'#EDE8F2', category:'simple'},
+  {name:'철봉',     emoji:'💪', color:'#6D597A', light:'#E8E2EF', category:'sets'},
+  {name:'플랭크',   emoji:'🧱', color:'#B07D62', light:'#F5EBE4', category:'sets'},
+];
+// category: distance=시간+거리km, swim=시간+거리m, hiking=산이름+시간+거리, simple=시간만, sets=세트입력
+
+// ── 사용자 정의 종목 목록 (localStorage) ──
+function loadUserTypes() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('workout_user_types') || 'null');
+    const base = saved && Array.isArray(saved) ? saved : [];
+    // 기존 항목: 기본 종목이면 color/light/category 최신화
+    const updated = base.map(t => {
+      const def = DEFAULT_TYPES.find(d => d.name === t.name);
+      return def ? {...t, color: def.color, light: def.light, category: def.category} : t;
+    });
+    // DEFAULT_TYPES 중 아직 목록에 없는 신규 항목 뒤에 추가
+    const names = new Set(updated.map(t => t.name));
+    const added = DEFAULT_TYPES.filter(d => !names.has(d.name)).map(t => ({...t}));
+    const merged = [...updated, ...added];
+    localStorage.setItem('workout_user_types', JSON.stringify(merged));
+    localStorage.setItem('workout_types_ver', String(TYPES_VERSION));
+    return merged;
+  } catch(e) { return DEFAULT_TYPES.map(t => ({...t})); }
+}
+function saveUserTypes(arr) {
+  localStorage.setItem('workout_user_types', JSON.stringify(arr));
+  localStorage.setItem('workout_types_ver', String(TYPES_VERSION));
+}
+
+// 현재 활성 종목 목록 (배열 of {name, emoji, color, light, category})
+let userTypes = loadUserTypes() || DEFAULT_TYPES.map(t=>({...t}));
+
+// 편의 lookup 함수 (삭제된 종목 → '기타' 처리)
+function getTypeDef(name) {
+  return userTypes.find(t=>t.name===name) || {name:'기타', emoji:'🏋️', color:'#A8A59E', light:'#F0EEE9', category:'simple'};
+}
+
+// 하위 호환: ET, EE, EC, EL은 동적으로 getter처럼 사용
+function ET_list() { return userTypes.map(t=>t.name); }
+function EE_map()  { const o={}; userTypes.forEach(t=>o[t.name]=t.emoji); o['기타']='🏋️'; return o; }
+function EC_map()  { const o={}; userTypes.forEach(t=>o[t.name]=t.color); o['기타']='#A8A59E'; return o; }
+function EL_map()  { const o={}; userTypes.forEach(t=>o[t.name]=t.light); o['기타']='#F0EEE9'; return o; }
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  const now = new Date();
+  dashCalYear = barChartYear = now.getFullYear();
+  dashCalMonth = barChartMonth = now.getMonth();
+  document.getElementById('f-date').value = now.toISOString().split('T')[0];
+  if (API_URL) { document.getElementById('apiUrl').value = API_URL; document.getElementById('apiStatus').textContent = '✅ URL이 설정되어 있습니다'; }
+  addExercise();
+  renderDashboard();
+  // live preview for new type form
+  ['newTypeName','newTypeEmoji','newTypeLight'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', updateTypePreview);
+  });
+});
+
+// ═══════════════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════════════
+const PAGE_TITLES = {dashboard:'대시보드', input:'운동 입력', history:'기록 조회', types:'종목 설정', settings:'API 설정'};
+function goTo(page, sidebarBtn, bottomBtn) {
+  document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+  document.getElementById('sec-' + page).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  if (sidebarBtn) sidebarBtn.classList.add('active');
+  else {
+    const match = [...document.querySelectorAll('.nav-item')].find(b => b.getAttribute('onclick')?.includes("'"+page+"'"));
+    if (match) match.classList.add('active');
+  }
+  document.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.remove('active'));
+  const bn = document.getElementById('bn-' + page);
+  if (bn) bn.classList.add('active');
+  document.getElementById('headerTitle').textContent = PAGE_TITLES[page] || '';
+  if (page === 'history')  renderHistory();
+  if (page === 'dashboard') renderDashboard();
+  if (page === 'types')    renderTypeList();
+  closeSidebar();
+}
+
+// ═══════════════════════════════════════════════════════
+//  EXERCISE ITEMS (input form)
+// ═══════════════════════════════════════════════════════
+function addExercise(defaultType) {
+  if (!defaultType) defaultType = userTypes[0]?.name || '기타';
+  const id = ++itemCounter;
+  exerciseItems.push({id, type:defaultType, actualTime:'', distance:'', mountain:'', sets:[{time:'',count:''}], note:'', cost:''});
+  renderExerciseList();
+  setTimeout(() => { const b = document.getElementById('ebody-'+id); if(b) b.classList.add('open'); }, 30);
+  updateTimeSummary();
+}
+function removeExercise(id) {
+  if (exerciseItems.length <= 1) { showToast('최소 1개 종목이 필요합니다','error'); return; }
+  exerciseItems = exerciseItems.filter(e => e.id !== id);
+  renderExerciseList(); updateTimeSummary();
+}
+function renderExerciseList() {
+  document.getElementById('exercisesList').innerHTML = exerciseItems.map((item,idx) => buildItemHTML(item,idx)).join('');
+}
+function buildItemHTML(item, idx) {
+  return `<div class="exercise-item" id="eitem-${item.id}">
+    <div class="exercise-item-header" onclick="toggleBody(${item.id})">
+      <div class="exercise-num">${idx+1}</div>
+      <select class="exercise-type-select" onclick="event.stopPropagation()" onchange="changeType(${item.id},this.value)">
+        ${ET_list().map(t=>`<option value="${t}"${t===item.type?' selected':''}>${EE_map()[t]} ${t}</option>`).join('')}
+      </select>
+      <div class="exercise-summary" id="esummary-${item.id}">${buildSummary(item)}</div>
+      <button class="btn-danger btn" onclick="event.stopPropagation();removeExercise(${item.id})">✕</button>
+    </div>
+    <div class="exercise-item-body open" id="ebody-${item.id}">${buildFields(item)}</div>
+  </div>`;
+}
+function buildSummary(item) {
+  const p = [];
+  if (item.actualTime) p.push(item.actualTime+'분');
+  if (item.distance) p.push(item.distance+(item.type==='수영'?'m':'km'));
+  if (item.mountain) p.push(item.mountain);
+  if (getTypeDef(item.type).category==='sets') { const v=item.sets.filter(s=>s.time&&s.count); if(v.length) p.push(v.length+'세트'); }
+  if (item.cost) p.push(Number(item.cost).toLocaleString('ko-KR')+'원');
+  return p.length ? p.join(' · ') : '<span style="opacity:.45;font-style:italic">입력 대기중...</span>';
+}
+function buildFields(item) {
+  const t = item.type;
+  const def = getTypeDef(t);
+  const cat = def.category;
+  const noteF = `<div class="form-group"><label class="form-label">종목 메모</label><input type="text" class="form-control" value="${item.note||''}" oninput="updateField(${item.id},'note',this.value)"></div>`;
+  const costF = `<div class="form-group"><label class="form-label">비용 (원)</label><input type="number" class="form-control" placeholder="0" min="0" value="${item.cost||''}" oninput="updateField(${item.id},'cost',this.value)"></div>`;
+  const timeF = `<div class="form-group"><label class="form-label">운동시간 (분)<span class="required">*</span></label><input type="number" class="form-control" placeholder="30" min="1" value="${item.actualTime||''}" oninput="updateField(${item.id},'actualTime',this.value)"></div>`;
+  if (cat==='distance') return `<div class="fields-grid">${timeF}
+    <div class="form-group"><label class="form-label">거리 (km)</label><input type="number" class="form-control" placeholder="5.0" step="0.01" min="0" value="${item.distance||''}" oninput="updateField(${item.id},'distance',this.value)"></div>
+    ${costF}${noteF}</div>`;
+  if (cat==='swim') return `<div class="fields-grid">${timeF}
+    <div class="form-group"><label class="form-label">거리 (m)</label><input type="number" class="form-control" placeholder="1000" step="50" min="0" value="${item.distance||''}" oninput="updateField(${item.id},'distance',this.value)"></div>
+    ${costF}${noteF}</div>`;
+  if (cat==='hiking') return `<div class="fields-grid">
+    <div class="form-group"><label class="form-label">산 이름<span class="required">*</span></label><input type="text" class="form-control" placeholder="예: 북한산" value="${item.mountain||''}" oninput="updateField(${item.id},'mountain',this.value)"></div>
+    ${timeF}
+    <div class="form-group"><label class="form-label">거리 (km)</label><input type="number" class="form-control" step="0.1" min="0" value="${item.distance||''}" oninput="updateField(${item.id},'distance',this.value)"></div>
+    ${costF}${noteF}</div>`;
+  if (cat==='sets') return buildSetsHTML(item) + `<div class="fields-grid g2" style="margin-top:10px">${costF}${noteF}</div>`;
+  // simple or unknown/custom
+  return `<div class="fields-grid">${timeF}${costF}${noteF}</div>`;
+}
+function buildSetsHTML(item) {
+  const rows = item.sets.map((s,si) => `<div class="set-row" id="setrow-${item.id}-${si}">
+    <div class="set-badge">세트${si+1}</div>
+    <input type="number" class="form-control" placeholder="초" min="1" value="${s.time||''}" style="width:70px" oninput="updateSet(${item.id},${si},'time',this.value)">
+    <span class="set-unit">초</span><span class="set-unit">×</span>
+    <input type="number" class="form-control" placeholder="횟수" min="1" value="${s.count||''}" style="width:70px" oninput="updateSet(${item.id},${si},'count',this.value)">
+    <span class="set-unit">회</span>
+    ${si>0?`<button type="button" class="btn-icon" onclick="removeSet(${item.id},${si})">✕</button>`:'<div style="width:28px"></div>'}
+  </div>`).join('');
+  return `<div><label class="form-label" style="margin-bottom:6px">세트 입력<span class="required">*</span></label>
+    <div class="sets-wrap" id="setsWrap-${item.id}">${rows}</div>
+    <button type="button" class="add-set-btn" onclick="addSet(${item.id})">+ 세트 추가</button></div>`;
+}
+function toggleBody(id) { const b=document.getElementById('ebody-'+id); if(b) b.classList.toggle('open'); }
+function updateField(id,key,val) {
+  const item=exerciseItems.find(e=>e.id===id); if(!item) return;
+  item[key]=val;
+  const s=document.getElementById('esummary-'+id); if(s) s.innerHTML=buildSummary(item);
+  updateTimeSummary();
+}
+function changeType(id,newType) {
+  const item=exerciseItems.find(e=>e.id===id); if(!item) return;
+  item.type=newType; item.actualTime=''; item.distance=''; item.mountain=''; item.sets=[{time:'',count:''}]; item.note=''; item.cost=item.cost||'';
+  const body=document.getElementById('ebody-'+id); if(body){body.innerHTML=buildFields(item);body.classList.add('open');}
+  const s=document.getElementById('esummary-'+id); if(s) s.innerHTML=buildSummary(item);
+  updateTimeSummary();
+}
+function updateSet(id,si,key,val) { const item=exerciseItems.find(e=>e.id===id); if(item&&item.sets[si]) item.sets[si][key]=val; }
+function addSet(id) {
+  const item=exerciseItems.find(e=>e.id===id); if(!item) return;
+  item.sets.push({time:'',count:''});
+  const si=item.sets.length-1, wrap=document.getElementById('setsWrap-'+id);
+  if(wrap){ const div=document.createElement('div');
+    div.innerHTML=`<div class="set-row" id="setrow-${id}-${si}" style="animation:fadeSlide .15s ease">
+      <div class="set-badge">세트${si+1}</div>
+      <input type="number" class="form-control" placeholder="초" min="1" style="width:70px" oninput="updateSet(${id},${si},'time',this.value)">
+      <span class="set-unit">초</span><span class="set-unit">×</span>
+      <input type="number" class="form-control" placeholder="횟수" min="1" style="width:70px" oninput="updateSet(${id},${si},'count',this.value)">
+      <span class="set-unit">회</span>
+      <button type="button" class="btn-icon" onclick="removeSet(${id},${si})">✕</button>
+    </div>`; wrap.appendChild(div.firstElementChild); }
+}
+function removeSet(id,si) {
+  const item=exerciseItems.find(e=>e.id===id); if(!item||item.sets.length<=1) return;
+  item.sets.splice(si,1);
+  const wrap=document.getElementById('setsWrap-'+id);
+  if(wrap) wrap.innerHTML=item.sets.map((s,i)=>`<div class="set-row" id="setrow-${id}-${i}">
+    <div class="set-badge">세트${i+1}</div>
+    <input type="number" class="form-control" placeholder="초" min="1" value="${s.time||''}" style="width:70px" oninput="updateSet(${id},${i},'time',this.value)">
+    <span class="set-unit">초</span><span class="set-unit">×</span>
+    <input type="number" class="form-control" placeholder="횟수" min="1" value="${s.count||''}" style="width:70px" oninput="updateSet(${id},${i},'count',this.value)">
+    <span class="set-unit">회</span>
+    ${i>0?`<button type="button" class="btn-icon" onclick="removeSet(${id},${i})">✕</button>`:'<div style="width:28px"></div>'}
+  </div>`).join('');
+}
+function updateTimeSummary() {
+  const total=parseInt(document.getElementById('f-totalTime')?.value)||0;
+  const exTotal=exerciseItems.reduce((s,e)=>s+(parseInt(e.actualTime)||0),0);
+  const el=document.getElementById('timeSummary'), txt=document.getElementById('timeSummaryText');
+  if(exerciseItems.length>1||exTotal>0){
+    el.style.display='block';
+    const diff=total-exTotal;
+    const note=diff>0?`이동·준비·휴식 ${diff}분 포함`:diff<0?`⚠️ 종목 합계가 총시간 초과`:`✓ 딱 맞습니다`;
+    txt.textContent=`종목 합계 ${exTotal}분 / 총 소요 ${total||'?'}분   (${note})`;
+    el.className='time-summary'+(diff<0?' warn':'');
+    txt.style.color=diff<0?'var(--a2)':'var(--tp)';
+  } else el.style.display='none';
+}
+
+// ═══════════════════════════════════════════════════════
+//  SUBMIT / RESET
+// ═══════════════════════════════════════════════════════
+async function submitForm() {
+  const date=document.getElementById('f-date').value;
+  if(!date){flash('f-date');showToast('날짜를 입력해주세요','error');return;}
+  const totalTime=document.getElementById('f-totalTime').value;
+  if(!totalTime){flash('f-totalTime');showToast('총 소요시간을 입력해주세요','error');return;}
+  if(!exerciseItems.length){showToast('종목을 추가해주세요','error');return;}
+  for(const item of exerciseItems){
+    const cat = getTypeDef(item.type).category;
+    if(cat!=='sets'&&!item.actualTime){showToast(`[${item.type}] 운동시간을 입력해주세요`,'error');return;}
+    if(cat==='hiking'&&!item.mountain){showToast(`[${item.type}] 산 이름을 입력해주세요`,'error');return;}
+    if(cat==='sets'&&!item.sets.filter(s=>s.time&&s.count).length){showToast(`[${item.type}] 세트 정보를 입력해주세요`,'error');return;}
+  }
+  const memo=document.getElementById('f-memo').value;
+  const session={date,totalTime,memo,exercises:exerciseItems.map(item=>({type:item.type,actualTime:item.actualTime||'',distance:item.distance||'',mountain:item.mountain||'',sets:getTypeDef(item.type).category==='sets'?item.sets.filter(s=>s.time&&s.count).map(s=>`${s.time}초×${s.count}회`).join(', '):'',note:item.note||'',cost:item.cost||''}))};
+  showLoading(true);
+  try {
+    const localRows=session.exercises.map((ex,i)=>({id:'l_'+Date.now()+'_'+i,date:session.date,totalTime:session.totalTime,memo:session.memo,cost:ex.cost||'',type:ex.type,actualTime:ex.actualTime,distance:ex.distance,mountain:ex.mountain,sets:ex.sets,note:ex.note}));
+    allData=[...localRows,...allData];
+    saveLocal();
+    if(API_URL) {
+      try {
+        // no-cors 모드: 응답은 못 읽지만 Apps Script에 postData로 전달됨
+        await fetch(API_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          body: JSON.stringify(session),
+          headers: {'Content-Type': 'text/plain'}
+        });
+        showToast(`✅ 저장 완료! (${session.exercises.map(e=>EE_map()[e.type]+e.type).join(', ')})`,'success');
+      } catch(apiErr) {
+        console.error('API POST error:', apiErr);
+        showToast(`⚠️ 로컬 저장 완료 — API 오류: ${apiErr.message}`,'error');
+      }
+    } else {
+      showToast(`✅ 로컬 저장 완료! (${session.exercises.map(e=>EE_map()[e.type]+e.type).join(', ')})`,'success');
+    }
+    resetForm(); renderDashboard(); 
+  } catch(err){
+    console.error('submitForm error:', err);
+    showToast('⚠️ 로컬 저장 완료 (오류: '+err.message+')','error');
+    resetForm(); renderDashboard();
+  }
+  finally{showLoading(false);}
+}
+function flash(id){const el=document.getElementById(id);if(el){el.classList.add('error');setTimeout(()=>el.classList.remove('error'),2000);}}
+function resetForm(){
+  document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('f-totalTime').value='';
+  document.getElementById('f-memo').value='';
+  exerciseItems=[];itemCounter=0;addExercise();updateTimeSummary();
+}
+
+// ═══════════════════════════════════════════════════════
+//  EDIT / DELETE
+// ═══════════════════════════════════════════════════════
+function openEdit(id) {
+  const row = allData.find(r => String(r.id) === String(id));
+  if(!row) return;
+  editingId = id;
+  const isRun = ['런닝머신','야외런닝','걷기'].includes(row.type);
+  const isSwim = row.type === '수영';
+  const isHike = row.type === '등산';
+  const isStr = row.type === '스트레칭';
+  const isSet  = getTypeDef(row.type).category === 'sets';
+  let body = `<div class="modal-grid">
+    <div class="form-group"><label class="form-label">날짜<span class="required">*</span></label><input type="date" id="edit-date" class="form-control" value="${row.date||''}"></div>
+    <div class="form-group"><label class="form-label">총 소요시간 (분)</label><input type="number" id="edit-totalTime" class="form-control" value="${row.totalTime||''}" min="1"></div>
+  </div>
+  <div class="modal-grid" style="margin-top:10px">
+    <div class="form-group"><label class="form-label">운동 종류<span class="required">*</span></label>
+      <select id="edit-type" class="form-control">${ET_list().map(t=>`<option value="${t}"${t===row.type?' selected':''}>${EE_map()[t]} ${t}</option>`).join('')}</select>
+    </div>`;
+  if (!isSet) body += `<div class="form-group"><label class="form-label">운동시간 (분)</label><input type="number" id="edit-actualTime" class="form-control" value="${row.actualTime||''}" min="1"></div>`;
+  body += `</div><div class="modal-grid" style="margin-top:10px">`;
+  if (isHike) body += `<div class="form-group"><label class="form-label">산 이름</label><input type="text" id="edit-mountain" class="form-control" value="${row.mountain||''}"></div>`;
+  if (isRun||isSwim||isHike) body += `<div class="form-group"><label class="form-label">거리 ${isSwim?'(m)':'(km)'}</label><input type="number" id="edit-distance" class="form-control" value="${row.distance||''}" step="${isSwim?50:0.01}" min="0"></div>`;
+  if (isSet) body += `<div class="form-group" style="grid-column:1/-1"><label class="form-label">세트 정보</label><input type="text" id="edit-sets" class="form-control" value="${row.sets||''}" placeholder="예: 30초×5회, 20초×3회"></div>`;
+  body += `</div>
+  <div class="modal-grid modal-grid.g1" style="margin-top:10px">
+    <div class="form-group"><label class="form-label">세션 메모</label><input type="text" id="edit-memo" class="form-control" value="${row.memo||''}"></div>
+    <div class="form-group"><label class="form-label">종목 메모</label><input type="text" id="edit-note" class="form-control" value="${row.note||''}"></div>
+  </div>
+  <div class="modal-grid" style="margin-top:10px">
+    <div class="form-group"><label class="form-label">비용 (원)</label><input type="number" id="edit-cost" class="form-control" value="${row.cost||''}" min="0" placeholder="예: 5000"></div>
+  </div>`;
+  document.getElementById('modalBody').innerHTML = body;
+  document.getElementById('editModal').classList.add('show');
+}
+function closeModal() { document.getElementById('editModal').classList.remove('show'); editingId=null; }
+function saveEdit() {
+  const idx = allData.findIndex(r => String(r.id) === String(editingId));
+  if(idx === -1) return;
+  const row = allData[idx];
+  row.date = document.getElementById('edit-date')?.value || row.date;
+  row.totalTime = document.getElementById('edit-totalTime')?.value || row.totalTime;
+  row.type = document.getElementById('edit-type')?.value || row.type;
+  row.actualTime = document.getElementById('edit-actualTime')?.value ?? row.actualTime;
+  row.distance = document.getElementById('edit-distance')?.value ?? row.distance;
+  row.mountain = document.getElementById('edit-mountain')?.value ?? row.mountain;
+  row.sets = document.getElementById('edit-sets')?.value ?? row.sets;
+  row.memo = document.getElementById('edit-memo')?.value ?? row.memo;
+  row.note = document.getElementById('edit-note')?.value ?? row.note;
+  row.cost = document.getElementById('edit-cost')?.value ?? row.cost;
+  saveLocal();
+  closeModal();
+  showToast('✅ 수정 완료','success');
+  renderHistory(); renderDashboard(); 
+}
+// ── 커스텀 확인 다이얼로그 (iframe에서 confirm() 차단 대응) ──
+let _confirmCallback = null;
+function showConfirm(msg, title='확인', okLabel='확인', onOk) {
+  document.getElementById('confirmMsg').textContent = msg;
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmOkBtn').textContent = okLabel;
+  _confirmCallback = onOk;
+  document.getElementById('confirmModal').classList.add('show');
+}
+function closeConfirm(ok) {
+  document.getElementById('confirmModal').classList.remove('show');
+  if (ok && _confirmCallback) _confirmCallback();
+  _confirmCallback = null;
+}
+
+function deleteRow(id) {
+  showConfirm('이 기록을 삭제할까요?', '기록 삭제', '삭제', () => {
+    const sid = String(id);
+    deletedIds.add(sid);
+    saveDeletedIds();
+    allData = allData.filter(r => String(r.id) !== sid);
+    saveLocal();
+    showToast('삭제되었습니다', '');
+    renderHistory(); renderDashboard();
+  });
+}
+function saveLocal() { localStorage.setItem('workout_local_data', JSON.stringify(allData)); }
+
+// ═══════════════════════════════════════════════════════
+//  LOAD REMOTE
+// ═══════════════════════════════════════════════════════
+// ── 삭제된 row ID 영구 보관 (API 재로드 후에도 유지) ──
+let deletedIds = new Set(JSON.parse(localStorage.getItem('workout_deleted_ids') || '[]'));
+function saveDeletedIds() { localStorage.setItem('workout_deleted_ids', JSON.stringify([...deletedIds])); }
+
+async function loadData() {
+  showLoading(true);
+  if(!API_URL){showToast('API URL을 설정해주세요','error');showLoading(false);return;}
+
+  // URL 기본 검증
+  if(!API_URL.includes('/exec')){
+    document.getElementById('apiStatus').innerHTML =
+      '❌ URL이 잘못되었습니다<br><span style="font-size:11px">• URL이 <b>/exec</b>로 끝나야 합니다 (/dev 아님)</span>';
+    showToast('❌ URL을 확인하세요 (/exec로 끝나야 함)', 'error');
+    showLoading(false); return;
+  }
+
+  // 1차 시도: JSONP (CORS 우회)
+  let remote = null;
+  try {
+    remote = await new Promise((resolve, reject) => {
+      const cbName = '_gasCallback_' + Date.now();
+      const script = document.createElement('script');
+      const timer = setTimeout(() => { cleanup(); reject(new Error('timeout')); }, 8000);
+      function cleanup() { clearTimeout(timer); delete window[cbName]; if(script.parentNode) script.parentNode.removeChild(script); }
+      window[cbName] = (data) => { cleanup(); resolve(data); };
+      script.onerror = () => { cleanup(); reject(new Error('jsonp_fail')); };
+      script.src = API_URL + (API_URL.includes('?') ? '&' : '?') + 'callback=' + cbName;
+      document.head.appendChild(script);
+    });
+  } catch(e1) {
+    // 2차 시도: 일반 fetch (같은 origin이거나 CORS 허용된 경우)
+    try {
+      const res = await fetch(API_URL, {redirect: 'follow'});
+      remote = await res.json();
+    } catch(e2) {
+      // 둘 다 실패
+      const hint = e1.message === 'jsonp_fail'
+        ? 'Apps Script doGet이 JSONP를 지원하는지 확인하세요 (v1.6 코드인지 확인)'
+        : '네트워크 오류 — URL과 배포 설정을 확인하세요';
+      document.getElementById('apiStatus').innerHTML =
+        '❌ 연결 실패<br><span style="font-size:11px">' +
+        '• URL이 <b>/exec</b>로 끝나는지 확인<br>' +
+        '• 배포 액세스: <b>모든 사용자</b> 확인<br>' +
+        '• Apps Script 코드가 <b>v1.6</b>인지 확인<br>' +
+        '• ' + hint + '</span>';
+      showToast('❌ 연결 실패 — API 설정 탭 안내를 확인하세요', 'error');
+      showLoading(false); renderHistory(); renderDashboard(); return;
+    }
+  }
+
+  // 데이터 처리
+  if(Array.isArray(remote) && remote.length) {
+    const remoteRows = remote.map((r,i) => {
+      // Google Sheets가 날짜를 Date 객체나 ISO 문자열로 반환하는 경우 YYYY-MM-DD로 정규화
+      let rawDate = r['날짜'] || '';
+      let dateStr = '';
+      if (rawDate instanceof Date) {
+        dateStr = rawDate.toISOString().split('T')[0];
+      } else {
+        dateStr = String(rawDate);
+        // "2026-03-10T15:00:00.000Z" 형식 처리
+        if (dateStr.includes('T')) dateStr = dateStr.split('T')[0];
+        // "2026. 3. 10." 형식 처리
+        dateStr = dateStr.replace(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.?/,
+          (_, y, m, d) => `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`);
+      }
+      const id = 'r_' + dateStr.replace(/-/g,'') + '_' + (r['운동종류']||'') + '_' + (r['운동시간(분)']||'') + '_' + i;
+      return {id, date:dateStr, totalTime:String(r['총소요시간(분)']||''), memo:r['세션메모']||'', cost:String(r['비용(원)']||''), type:r['운동종류']||'', actualTime:String(r['운동시간(분)']||''), distance:String(r['거리(km/m)']||''), mountain:r['산이름']||'', sets:r['세트정보']||'', note:r['종목메모']||''};
+    }).filter(r => !deletedIds.has(r.id));
+    // 로컬 전용(l_ prefix) 중 원격에 없는 것만 유지 → 중복 방지
+    const remoteIds = new Set(remoteRows.map(r => r.date + '_' + r.type + '_' + r.actualTime));
+    const localOnly = allData.filter(r =>
+      String(r.id).startsWith('l_') &&
+      !remoteIds.has(r.date + '_' + r.type + '_' + r.actualTime)
+    );
+    allData = [...localOnly, ...remoteRows];
+    saveLocal();
+    document.getElementById('apiStatus').innerHTML = `✅ 연결됨 — 총 ${allData.length}개 기록`;
+    showToast(`✅ ${allData.length}개 기록 불러옴`, 'success');
+  } else {
+    document.getElementById('apiStatus').innerHTML = '✅ 연결됨 — 스프레드시트가 비어있습니다';
+    showToast('연결 성공 — 데이터가 없습니다', '');
+  }
+  showLoading(false); renderHistory(); renderDashboard();
+}
+
+// ═══════════════════════════════════════════════════════
+//  HISTORY (정렬 + 수정/삭제)
+// ═══════════════════════════════════════════════════════
+function renderHistory(){
+  // 종목 필터 옵션을 userTypes 기반으로 동적 갱신
+  const sel = document.getElementById('filterType');
+  if (sel) {
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">전체 종류</option>' +
+      userTypes.map(t => `<option${t.name===cur?' selected':''}>${t.name}</option>`).join('');
+  }
+  filterHistory();
+}
+
+function sortHistory(key) {
+  if(historySortKey===key) historySortDir=historySortDir==='asc'?'desc':'asc';
+  else{historySortKey=key;historySortDir='desc';}
+  // Update header indicators
+  ['date','totalTime','type','actualTime'].forEach(k=>{
+    const th=document.getElementById('hth-'+k);
+    if(!th) return;
+    th.classList.remove('sort-asc','sort-desc');
+    if(k===historySortKey) th.classList.add(historySortDir==='asc'?'sort-asc':'sort-desc');
+  });
+  filterHistory();
+}
+
+function filterHistory() {
+  const q=(document.getElementById('searchInput')?.value||'').toLowerCase();
+  const tf=document.getElementById('filterType')?.value||'';
+  let filtered=allData.filter(r=>
+    (!q||(r.date||'').includes(q)||(r.type||'').includes(q)||(r.memo||'').toLowerCase().includes(q)||(r.mountain||'').includes(q)||(r.note||'').toLowerCase().includes(q))&&
+    (!tf||r.type===tf)
+  );
+  // Sort
+  filtered=sortRows(filtered, historySortKey, historySortDir);
+  const tbody=document.getElementById('historyTableBody');
+  if(!filtered.length){tbody.innerHTML=`<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">검색 결과 없음</div></div></td></tr>`;document.getElementById('historyCount').textContent='';return;}
+  // Group by date for visual separation, but still in sorted order
+  let lastDate=null;
+  tbody.innerHTML=filtered.map(r=>{
+    let gr='';
+    if(historySortKey==='date'&&r.date!==lastDate){
+      lastDate=r.date;
+      gr=`<tr class="session-row"><td style="font-family:'DM Mono',monospace;color:var(--a);font-weight:700">${r.date||'-'}</td><td style="font-weight:600">${r.totalTime?fmtMins(parseInt(r.totalTime)):'-'}</td><td colspan="6" style="color:var(--tm);font-weight:400">${r.memo||''}</td></tr>`;
+    }
+    const detail = getTypeDef(r.type).category==='hiking'
+      ? [r.mountain, r.distance?(r.distance+'km'):null].filter(Boolean).join(' · ') || '-'
+      : r.type==='철봉' ? (r.sets||'-')
+      : r.distance ? `${r.distance}${r.type==='수영'?'m':'km'}` : '-';
+    return gr+`<tr>
+      <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--ts)">${r.date||'-'}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px">${r.totalTime?fmtMins(parseInt(r.totalTime)):'-'}</td>
+      <td><span class="badge" style="background:${EL_map()[r.type]||'var(--surface2)'};color:var(--tp)">${EE_map()[r.type]||'🏋️'} ${r.type}</span></td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px">${r.actualTime?fmtMins(parseInt(r.actualTime)):'-'}</td>
+      <td style="color:var(--ts)">${detail}</td>
+      <td style="color:var(--tm);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.note||'-'}</td>
+      <td style="font-size:12px;color:var(--tm);font-family:'DM Mono',monospace;white-space:nowrap">${r.cost?Number(r.cost).toLocaleString('ko-KR')+'원':'-'}</td>
+      <td><div class="action-btns">
+        <button class="btn btn-edit btn-sm" onclick="openEdit('${r.id}')">수정</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteRow('${r.id}')">삭제</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('historyCount').textContent=`총 ${filtered.length}개 종목 기록`;
+}
+
+function sortRows(arr, key, dir) {
+  return [...arr].sort((a,b)=>{
+    let va=a[key]||'', vb=b[key]||'';
+    if(key==='date'||key==='type') { va=String(va); vb=String(vb); return dir==='asc'?va.localeCompare(vb):vb.localeCompare(va); }
+    va=parseFloat(va)||0; vb=parseFloat(vb)||0;
+    return dir==='asc'?va-vb:vb-va;
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════════════════════
+let trendWeeksVal = 8;
+function setTrendPeriod(weeks,btn){trendWeeksVal=weeks;document.querySelectorAll('.period-tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderWeeklyChart();}
+
+function renderDashboard() {
+  const now=new Date(), y=now.getFullYear(), m=now.getMonth();
+  const monthData=allData.filter(r=>{const d=new Date(r.date);return d.getFullYear()===y&&d.getMonth()===m;});
+  const lastM=m===0?11:m-1, lastY=m===0?y-1:y;
+  const lastData=allData.filter(r=>{const d=new Date(r.date);return d.getFullYear()===lastY&&d.getMonth()===lastM;});
+
+  const uDays   = new Set(monthData.map(r=>r.date)).size;
+  const tTime   = monthData.reduce((a,r)=>a+(parseInt(r.actualTime)||0),0);
+  const tTotal  = [...new Set(monthData.map(r=>r.date))].reduce((a,date)=>{
+    const rows=monthData.filter(r=>r.date===date);
+    return a+(parseInt(rows[0]?.totalTime)||0);
+  },0);
+  const tDist   = monthData.reduce((a,r)=>{const d=parseFloat(r.distance)||0;return a+(r.type==='수영'?d/1000:d);},0);
+
+  // helper
+  function statVal(mins) { return mins>=60 ? (mins/60).toFixed(1) : String(mins); }
+  function statUnit(mins) { return mins>=60 ? '시간' : '분'; }
+  function densityColor(d) { return d>=80?'var(--a)':d>=60?'var(--y)':'var(--a2)'; }
+  function densityLabel(d) { return d>=80?'집중도 높음 💪':d>=60?'적당한 준비시간':'준비·이동 많음'; }
+  function fmtCost(n) { return n>0 ? n.toLocaleString('ko-KR') : '—'; }
+
+  // ── 카드1 ──
+  document.getElementById('stat-count').textContent = uDays;
+  document.getElementById('stat-dist').textContent  = tDist.toFixed(1);
+
+  // ── 카드2 ──
+  document.getElementById('stat-total-time').textContent     = statVal(tTotal);
+  document.getElementById('stat-total-time-unit').textContent= statUnit(tTotal);
+  document.getElementById('stat-time').textContent      = statVal(tTime);
+  document.getElementById('stat-time-unit').textContent = statUnit(tTime);
+
+  // ── 카드3: 밀도(이번달/올해) + 올해 운동일 ──
+  // 이번 달 밀도
+  const density = tTotal>0 ? Math.round(tTime/tTotal*100) : null;
+  const dEl=document.getElementById('stat-density'), dUnit=document.getElementById('stat-density-unit'), dSub=document.getElementById('stat-density-sub');
+  if(density!==null){ dEl.textContent=density; dUnit.textContent='%'; dEl.style.color=densityColor(density); dSub.textContent=densityLabel(density); }
+  else { dEl.textContent='—'; dUnit.textContent=''; dSub.textContent='데이터 없음'; }
+
+  // 올해 밀도
+  const yearData = allData.filter(r=>{const d=new Date(r.date);return d.getFullYear()===y;});
+  const yNet   = yearData.reduce((a,r)=>a+(parseInt(r.actualTime)||0),0);
+  const yTotal = [...new Set(yearData.map(r=>r.date))].reduce((a,date)=>{
+    const rows=yearData.filter(r=>r.date===date); return a+(parseInt(rows[0]?.totalTime)||0);
+  },0);
+  const densityYear = yTotal>0 ? Math.round(yNet/yTotal*100) : null;
+  const dyEl=document.getElementById('stat-density-year'), dyUnit=document.getElementById('stat-density-year-unit'), dySub=document.getElementById('stat-density-year-sub');
+  if(densityYear!==null){ dyEl.textContent=densityYear; dyUnit.textContent='%'; dyEl.style.color=densityColor(densityYear); dySub.textContent=densityLabel(densityYear); }
+  else { dyEl.textContent='—'; dyUnit.textContent=''; dySub.textContent='데이터 없음'; }
+
+  // 올해 총 운동일
+  const yearDays   = new Set(yearData.map(r=>r.date)).size;
+  const dayOfYear  = Math.floor((now-new Date(y,0,1))/864e5)+1;
+  const yearPct    = Math.round(yearDays/dayOfYear*100);
+  document.getElementById('stat-year').textContent    = yearDays;
+  document.getElementById('stat-year-sub').textContent= `올해 ${dayOfYear}일 중 ${yearPct}%`;
+
+  // ── 카드4: 이번 달 비용 + 올해 비용 ──
+  const monthCost = monthData.reduce((a,r)=>a+(parseInt(r.cost)||0),0);
+  const yearCost  = yearData.reduce((a,r)=>a+(parseInt(r.cost)||0),0);
+  document.getElementById('stat-cost-month').textContent = fmtCost(monthCost);
+  document.getElementById('stat-cost-year').textContent  = fmtCost(yearCost);
+
+  // ── 전월 트렌드 ──
+  const lastDays  = new Set(lastData.map(r=>r.date)).size;
+  const lastNet   = lastData.reduce((a,r)=>a+(parseInt(r.actualTime)||0),0);
+  const lastTotal = [...new Set(lastData.map(r=>r.date))].reduce((a,date)=>{
+    const rows=lastData.filter(r=>r.date===date); return a+(parseInt(rows[0]?.totalTime)||0);
+  },0);
+  const lastDist  = lastData.reduce((a,r)=>{const d=parseFloat(r.distance)||0;return a+(r.type==='수영'?d/1000:d);},0);
+  const lastCost = lastData.reduce((a,r)=>a+(parseInt(r.cost)||0),0);
+
+  trendBadge('stat-count-trend',      uDays,      lastDays,   '일');
+  trendBadge('stat-dist-trend',       tDist,      lastDist,   'km', 2);
+  trendBadge('stat-total-time-trend', tTotal,     lastTotal,  '분');
+  trendBadge('stat-time-trend',       tTime,      lastNet,    '분');
+  trendBadge('stat-cost-month-trend', monthCost,  lastCost,   '원');
+
+  renderDowPattern();
+  renderMonthGridDash();
+  renderDonut(allData);
+  renderBarChart();
+  renderSparkline();
+  renderRecentTable();
+}
+
+function trendBadge(elId,curr,prev,unit,decimals=0){
+  const el=document.getElementById(elId); if(!el) return;
+  if(!prev){el.innerHTML='';return;}
+  const diff=curr-prev, pct=Math.round(Math.abs(diff)/prev*100);
+  const cls=diff>0?'trend-up':diff<0?'trend-down':'trend-same';
+  const arrow=diff>0?'▲':diff<0?'▼':'—';
+  const diffStr=Math.abs(diff).toFixed(decimals);
+  el.innerHTML=`<span class="${cls}">${arrow} ${diffStr}${unit}</span><span>(${pct}%)</span>`;
+}
+
+// helper: format minutes → "1시간 30분" if >60, else "45분"
+function fmtMins(mins) {
+  if (!mins) return '';
+  mins = Math.round(mins);
+  if (mins < 60) return mins + '분';
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return m > 0 ? h + '시간 ' + m + '분' : h + '시간';
+}
+
+function renderWeeklyChart() { /* 주간 차트 제거됨 — renderDowPattern만 사용 */ }
+
+function renderDowPattern() {
+  const el = document.getElementById('dowPattern');
+  if (!el) return;
+  const DOW_LABELS=['일','월','화','수','목','금','토'];
+  const now=new Date();
+  const cutoff=new Date(now); cutoff.setDate(cutoff.getDate()-90);
+  const recentData=allData.filter(r=>r.date&&new Date(r.date)>=cutoff);
+  const dowCounts=Array(7).fill(0);
+  const dowMins  =Array(7).fill(0);
+  recentData.forEach(r=>{
+    const dow=new Date(r.date).getDay();
+    dowCounts[dow]++;
+    dowMins[dow]+=(parseInt(r.actualTime)||0);
+  });
+  const dowDates=Array.from({length:7},()=>new Set());
+  recentData.forEach(r=>{ if(r.date) dowDates[new Date(r.date).getDay()].add(r.date); });
+  const dowDayCounts=dowDates.map(s=>s.size);
+  const maxDow=Math.max(...dowDayCounts,1);
+  el.innerHTML=DOW_LABELS.map((lbl,i)=>{
+    const cnt=dowDayCounts[i];
+    const pct=cnt/maxDow;
+    const avgMins=cnt>0?Math.round(dowMins[i]/dowCounts[i]):0;
+    const bg=pct>=.8?'var(--a)':pct>=.5?'#52b788':pct>=.2?'var(--al)':'var(--surface2)';
+    const textColor=pct>=.5?'white':'var(--ts)';
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px" title="${lbl}요일: ${cnt}회${avgMins?' · 평균 '+fmtMins(avgMins):''}">
+      <div style="width:100%;aspect-ratio:1;border-radius:6px;background:${bg};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;font-family:'DM Mono',monospace;color:${textColor}">${cnt||''}</div>
+      <div style="font-size:10px;color:var(--tm);font-weight:600">${lbl}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Dashboard calendar (월 이동 가능) ──
+function dashCalPrev(){dashCalMonth--;if(dashCalMonth<0){dashCalMonth=11;dashCalYear--;}renderMonthGridDash();}
+function dashCalNext(){dashCalMonth++;if(dashCalMonth>11){dashCalMonth=0;dashCalYear++;}renderMonthGridDash();}
+
+function renderMonthGridDash() {
+  const y=dashCalYear, m=dashCalMonth;
+  const now=new Date();
+  const firstDay=new Date(y,m,1).getDay(), dim=new Date(y,m+1,0).getDate();
+  document.getElementById('dashCalLabel').textContent=`${y}년 ${m+1}월`;
+  const byDate={};
+  allData.forEach(r=>{
+    if(!r.date) return; const d=new Date(r.date);
+    if(d.getFullYear()===y&&d.getMonth()===m){if(!byDate[r.date]) byDate[r.date]=[];const k=r.type?(userTypes.some(t=>t.name===r.type)?r.type:'기타'):'';if(k&&!byDate[r.date].includes(k)) byDate[r.date].push(k);}
+  });
+  const usedTypes=[...new Set(Object.values(byDate).flat())];
+  document.getElementById('monthGridLegend').innerHTML=usedTypes.map(t=>`<div style="display:flex;align-items:center;gap:3px"><div style="width:7px;height:7px;border-radius:2px;background:${EC_map()[t]}"></div><span>${EE_map()[t]||''} ${t}</span></div>`).join('');
+  let html='';
+  for(let i=0;i<firstDay;i++) html+=`<div class="mgd empty-day"></div>`;
+  for(let d=1;d<=dim;d++){
+    const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const types=byDate[ds]||[];
+    const isToday=now.getFullYear()===y&&now.getMonth()===m&&now.getDate()===d;
+    if(!types.length){html+=`<div class="mgd rest-day${isToday?' today-cell':''}"><div class="mgd-num">${d}</div></div>`;}
+    else{const bg=EL_map()[types[0]]||'#f0f0f0';html+=`<div class="mgd has-data${isToday?' today-cell':''}" style="background:${bg}" title="${ds}: ${types.join(', ')}"><div class="mgd-num" style="color:${EC_map()[types[0]]};font-size:11px">${d}</div><div class="mgd-types">${types.slice(0,3).map(t=>EE_map()[t]||'').join('')}</div></div>`;}
+  }
+  document.getElementById('monthGridDash').innerHTML=html;
+}
+
+// ── Bar chart with month navigation ──
+function barChartPrev(){barChartMonth--;if(barChartMonth<0){barChartMonth=11;barChartYear--;}renderBarChart();}
+function barChartNext(){const now=new Date();if(barChartYear>now.getFullYear()||(barChartYear===now.getFullYear()&&barChartMonth>=now.getMonth())) return;barChartMonth++;if(barChartMonth>11){barChartMonth=0;barChartYear++;}renderBarChart();}
+
+function renderBarChart() {
+  const y=barChartYear, m=barChartMonth;
+  document.getElementById('barChartLabel').textContent=`${m+1}월`;
+  const monthData=allData.filter(r=>{const d=new Date(r.date);return d.getFullYear()===y&&d.getMonth()===m;});
+  const times={};
+  monthData.forEach(r=>{if(r.type&&r.actualTime){const k=userTypes.some(t=>t.name===r.type)?r.type:'기타';times[k]=(times[k]||0)+(parseInt(r.actualTime)||0);}});
+  const entries=Object.entries(times).sort((a,b)=>b[1]-a[1]);
+  const max=Math.max(...entries.map(e=>e[1]),1);
+  const chart=document.getElementById('barChart');
+  if(!entries.length){chart.innerHTML=`<div style="text-align:center;color:var(--tm);padding:16px;font-size:13px">${y}년 ${m+1}월 기록 없음</div>`;return;}
+  chart.innerHTML=entries.map(([type,val])=>`<div class="hbar-row"><div class="hbar-label">${EE_map()[type]||''} ${type}</div><div class="hbar-track"><div class="hbar-fill" style="width:${(val/max*100).toFixed(1)}%;background:${EC_map()[type]}"></div></div><div class="hbar-val" style="width:60px">${fmtMins(val)}</div></div>`).join('');
+}
+
+// ── Donut ──
+function renderDonut(data){
+  // normalize unknown types → 기타
+  const counts={};
+  data.forEach(r=>{
+    if(!r.type) return;
+    const key = userTypes.some(t=>t.name===r.type) ? r.type : '기타';
+    counts[key]=(counts[key]||0)+1;
+  });
+  const total=Object.values(counts).reduce((a,b)=>a+b,0);
+  document.getElementById('donutTotal').textContent=total;
+  const types=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+
+  // r=13, stroke-width=6 → thicker ring
+  const R=13, CX=18, CY=18, SW=6;
+  const circ=2*Math.PI*R;
+  let offset=0, circles='';
+  types.forEach(([type,count])=>{
+    const pct=count/total;
+    const dash=(pct*circ).toFixed(4);
+    const gap=(circ-pct*circ).toFixed(4);
+    // dashoffset: start from top (rotate -90 via transform)
+    const off=(-offset).toFixed(4);
+    circles+=`<circle
+      class="donut-slice"
+      cx="${CX}" cy="${CY}" r="${R}"
+      fill="none"
+      stroke="${EC_map()[type]||'#ccc'}"
+      stroke-width="${SW}"
+      stroke-dasharray="${dash} ${gap}"
+      stroke-dashoffset="${off}"
+      transform="rotate(-90 ${CX} ${CY})"
+      data-type="${type}"
+      data-count="${count}"
+      data-pct="${Math.round(pct*100)}"
+      onmouseenter="donutHover(this)"
+      onmouseleave="donutLeave()"
+    />`;
+    offset+=pct*circ;
+  });
+  document.getElementById('donutSvg').innerHTML=
+    `<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="var(--surface2)" stroke-width="${SW}"/>`+circles;
+
+  const legend=document.getElementById('exerciseLegend');
+  if(!total){legend.innerHTML='<div style="text-align:center;color:var(--tm);font-size:12px;padding:10px">기록 없음</div>';return;}
+  legend.innerHTML=types.slice(0,6).map(([type,count])=>`<div class="legend-item"><div class="legend-name"><div class="legend-dot" style="background:${EC_map()[type]}"></div>${EE_map()[type]||''} ${type}</div><div class="legend-count">${count}회</div></div>`).join('');
+}
+
+function donutHover(el){
+  const chart=document.getElementById('donutChart');
+  const type=el.dataset.type, count=el.dataset.count, pct=el.dataset.pct;
+  document.getElementById('donutTipType').textContent=`${EE_map()[type]||''} ${type}`;
+  document.getElementById('donutTipCount').textContent=count+'회';
+  document.getElementById('donutTipPct').textContent=pct+'%';
+  document.getElementById('donutTipPct').style.color=EC_map()[type]||'var(--tp)';
+  chart.classList.add('donut-hover');
+}
+function donutLeave(){
+  document.getElementById('donutChart').classList.remove('donut-hover');
+}
+
+// ── Monthly chart: bar (workout days) + dashed line (net minutes) ──
+function renderSparkline(){
+  const now=new Date();
+  const months=[];
+  for(let i=5;i>=0;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    months.push({y:d.getFullYear(),m:d.getMonth()});
+  }
+  const vals=months.map(({y,m})=>
+    new Set(allData.filter(r=>{const d=new Date(r.date);return d.getFullYear()===y&&d.getMonth()===m;}).map(r=>r.date)).size
+  );
+  const netMins=months.map(({y,m})=>
+    allData.filter(r=>{const d=new Date(r.date);return d.getFullYear()===y&&d.getMonth()===m;})
+           .reduce((s,r)=>s+(parseInt(r.actualTime)||0),0)
+  );
+  const totalMinsArr=months.map(({y,m})=>{
+    const mData=allData.filter(r=>{const d=new Date(r.date);return d.getFullYear()===y&&d.getMonth()===m;});
+    return [...new Set(mData.map(r=>r.date))].reduce((a,date)=>{
+      const rows=mData.filter(r=>r.date===date);
+      return a+(parseInt(rows[0]?.totalTime)||0);
+    },0);
+  });
+  const maxV=Math.max(...vals,1);
+  const maxNet=Math.max(...netMins,1);
+  const curY=now.getFullYear(), curM=now.getMonth();
+
+  const barHTML=months.map(({y,m},i)=>{
+    const v=vals[i], pct=v/maxV*100;
+    const isCur=y===curY&&m===curM;
+    const netStr  =netMins[i]  ?fmtMins(netMins[i])  :'-';
+    const totStr  =totalMinsArr[i]?fmtMins(totalMinsArr[i]):'-';
+    const tip=`${y}년 ${m+1}월\n운동일 ${v}일\n순 운동 ${netStr}\n총 소요 ${totStr}`;
+    return `<div class="mbar-col${isCur?' active-month':''}" onclick="jumpToMonth(${y},${m})" data-idx="${i}">
+      <div class="mbar-tooltip" style="white-space:pre-line;line-height:1.6">${tip}</div>
+      <div class="mbar-val">${v>0?v:''}</div>
+      <div class="mbar-track" style="height:${Math.max(pct,0)}%">
+        <div class="mbar-fill" style="height:100%;background:var(--a3);opacity:${isCur?1:.5}"></div>
+      </div>
+      <div class="mbar-lbl${isCur?' cur':''}">${m+1}월</div>
+    </div>`;
+  }).join('');
+
+  const container=document.getElementById('monthlyBarChart');
+  container.innerHTML=`<div class="mbar-wrap" id="mbarWrap" style="position:relative">${barHTML}</div>
+  <div style="margin-top:5px;font-size:11px;color:var(--tm);text-align:center">막대 클릭 시 해당 월로 이동</div>`;
+
+  // SVG line overlay for net minutes
+  requestAnimationFrame(()=>{
+    const wrap=document.getElementById('mbarWrap');
+    if(!wrap) return;
+    const cols=[...wrap.querySelectorAll('.mbar-col')];
+    if(!cols.length) return;
+    const wrapRect=wrap.getBoundingClientRect();
+    const wH=wrap.offsetHeight;
+    const topPad=16, botPad=20, chartH=wH-topPad-botPad;
+    const pts=cols.map((col,i)=>{
+      const r=col.getBoundingClientRect();
+      const cx=r.left-wrapRect.left+r.width/2;
+      const pct=netMins[i]/maxNet;
+      const cy=topPad+chartH*(1-pct);
+      return {cx,cy,v:netMins[i]};
+    });
+    const W=wrap.offsetWidth, H=wrap.offsetHeight;
+    if(!W||!H) return;
+    const pathD=pts.map((p,i)=>`${i===0?'M':'L'} ${p.cx.toFixed(1)} ${p.cy.toFixed(1)}`).join(' ');
+    const dots=pts.map(p=>`
+      <circle cx="${p.cx.toFixed(1)}" cy="${p.cy.toFixed(1)}" r="3.5" fill="var(--a2)" stroke="white" stroke-width="1.5"/>
+      ${p.v>0?`<text x="${p.cx.toFixed(1)}" y="${(p.cy-7).toFixed(1)}" text-anchor="middle" font-size="9" fill="var(--a2)" font-family="DM Mono,monospace" font-weight="600">${fmtMins(p.v)}</text>`:''}
+    `).join('');
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('width',W); svg.setAttribute('height',H);
+    svg.style.cssText='position:absolute;top:0;left:0;pointer-events:none;overflow:visible';
+    svg.innerHTML=`<path d="${pathD}" fill="none" stroke="var(--a2)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="5 3" opacity=".85"/>${dots}`;
+    wrap.appendChild(svg);
+  });
+}
+
+// 클릭 시 달력 + 운동시간 차트를 해당 월로 이동
+function jumpToMonth(y, m){
+  dashCalYear=y; dashCalMonth=m; renderMonthGridDash();
+  barChartYear=y; barChartMonth=m; renderBarChart();
+  // 변경됐음을 시각적으로 표시
+  showToast(`${y}년 ${m+1}월로 이동했습니다`,'success');
+  // 달력 카드 위치로 스크롤
+  const calCard=document.getElementById('monthGridDash');
+  if(calCard) calCard.closest('.card')?.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+// ── Recent table (정렬 가능) ──
+function sortRecent(key){
+  if(recentSortKey===key) recentSortDir=recentSortDir==='asc'?'desc':'asc';
+  else{recentSortKey=key;recentSortDir='desc';}
+  renderRecentTable();
+}
+function renderRecentTable(){
+  let sorted=sortRows(allData,recentSortKey,recentSortDir).slice(0,10);
+  const tbody=document.getElementById('recentTableBody');
+  // Update sort indicators
+  document.querySelectorAll('#sec-dashboard thead th.sortable').forEach(th=>{
+    th.classList.remove('sort-asc','sort-desc');
+    if(th.getAttribute('onclick')==='sortRecent(\''+recentSortKey+'\')') th.classList.add(recentSortDir==='asc'?'sort-asc':'sort-desc');
+  });
+  if(!sorted.length){tbody.innerHTML=`<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">🏃</div><div class="empty-title">아직 기록이 없어요</div><div class="empty-sub">운동 입력 탭에서 첫 운동을 기록해보세요!</div></div></td></tr>`;return;}  let lastDate=null;
+  tbody.innerHTML=sorted.map(r=>{
+    let gr='';
+    const isSameDate = recentSortKey==='date' && r.date===lastDate;
+    if(recentSortKey==='date'&&r.date!==lastDate){lastDate=r.date;gr=`<tr class="session-row"><td style="font-family:'DM Mono',monospace;color:var(--a);font-weight:700">${r.date}</td><td>${r.totalTime?fmtMins(parseInt(r.totalTime)):'-'}</td><td colspan="3" style="color:var(--tm)">${r.memo||''}</td></tr>`;}
+    const detail = getTypeDef(r.type).category==='hiking'
+      ? [r.mountain, r.distance?(r.distance+'km'):null].filter(Boolean).join(' · ') || '-'
+      : r.type==='철봉' ? (r.sets||'-')
+      : r.distance ? `${r.distance}${r.type==='수영'?'m':'km'}` : '-';
+    const rowCls = isSameDate ? '' : 'class="session-row-data"';
+    return gr+`<tr ${rowCls}>
+      <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--ts)">${r.date||'-'}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px">${r.totalTime?fmtMins(parseInt(r.totalTime)):'-'}</td>
+      <td><span class="badge" style="background:${EL_map()[r.type]||'var(--surface2)'};color:var(--tp)">${EE_map()[r.type]||'🏋️'} ${r.type}</span></td>
+      <td style="font-size:12px;color:var(--ts)">${r.actualTime?fmtMins(parseInt(r.actualTime)):(r.sets||'-')}</td>
+      <td style="font-size:12px;color:var(--ts)">${detail}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  STREAK
+// ═══════════════════════════════════════════════════════
+function calcStreak(){
+  const dates=new Set(allData.map(r=>r.date).filter(Boolean));
+  let s=0;const now=new Date();
+  for(let i=0;i<365;i++){const d=new Date(now);d.setDate(d.getDate()-i);const k=d.toISOString().split('T')[0];if(dates.has(k))s++;else if(i>0)break;}
+  return s;
+}
+
+// ═══════════════════════════════════════════════════════
+//  EXERCISE TYPE MANAGEMENT
+// ═══════════════════════════════════════════════════════
+const CAT_LABELS = {simple:'시간만', distance:'시간+거리(km)', swim:'시간+거리(m)', hiking:'산이름+시간+거리', sets:'세트 입력'};
+
+function renderTypeList() {
+  const el = document.getElementById('typeList');
+  if (!el) return;
+  if (!userTypes.length) {
+    el.innerHTML = `<div style="text-align:center;color:var(--tm);padding:20px;font-size:13px">종목이 없습니다.</div>`;
+    return;
+  }
+  el.innerHTML = userTypes.map((t, i) => {
+    const isDefault = DEFAULT_TYPES.some(d => d.name === t.name);
+    return `
+    <div class="type-row" id="typerow-${i}">
+      <!-- 색상 스와치 (클릭 시 색상 피커 오픈) -->
+      <div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0">
+        <div title="진한 색 변경" style="position:relative;width:22px;height:22px">
+          <div style="width:22px;height:22px;border-radius:5px;background:${t.color};cursor:pointer;border:2px solid rgba(0,0,0,.1)" onclick="document.getElementById('cp-color-${i}').click()" title="진한 색"></div>
+          <input type="color" id="cp-color-${i}" value="${t.color}" style="position:absolute;opacity:0;width:0;height:0" onchange="updateTypeField(${i},'color',this.value)">
+        </div>
+        <div style="position:relative;width:22px;height:22px">
+          <div style="width:22px;height:22px;border-radius:5px;background:${t.light};cursor:pointer;border:2px solid rgba(0,0,0,.1)" onclick="document.getElementById('cp-light-${i}').click()" title="배경 색"></div>
+          <input type="color" id="cp-light-${i}" value="${t.light}" style="position:absolute;opacity:0;width:0;height:0" onchange="updateTypeField(${i},'light',this.value)">
+        </div>
+      </div>
+      <!-- 이모지 인라인 편집 -->
+      <input class="type-emoji-input" value="${t.emoji}" maxlength="4"
+        title="이모지 클릭하여 변경"
+        onchange="updateTypeField(${i},'emoji',this.value)"
+        style="width:36px;height:36px;border:1.5px solid var(--border);border-radius:8px;font-size:20px;text-align:center;background:${t.light};cursor:text;padding:0;outline:none;font-family:inherit">
+      <!-- 이름 + 카테고리 -->
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="type-name">${t.name}</span>
+          ${isDefault ? '<span class="type-builtin">기본</span>' : ''}
+        </div>
+        <div class="type-cat">${CAT_LABELS[t.category] || t.category}</div>
+      </div>
+      <!-- 순서 이동 버튼 -->
+      <div style="display:flex;flex-direction:column;gap:1px;flex-shrink:0">
+        <button class="type-del" style="font-size:11px;height:18px" onclick="moveType(${i},-1)" ${i===0?'disabled':''} title="위로">▲</button>
+        <button class="type-del" style="font-size:11px;height:18px" onclick="moveType(${i},1)" ${i===userTypes.length-1?'disabled':''} title="아래로">▼</button>
+      </div>
+      <!-- 삭제 버튼 -->
+      <button class="type-del" onclick="deleteUserType(${i})" title="삭제">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function updateTypeField(i, field, value) {
+  if (!userTypes[i]) return;
+  userTypes[i][field] = value;
+  saveUserTypes(userTypes);
+  renderTypeList();
+  renderDashboard();
+  renderExerciseList();
+  showToast(`'${userTypes[i]?.name || ''}' ${field==='emoji'?'이모지':'색상'} 변경됨`, 'success');
+}
+
+function moveType(i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= userTypes.length) return;
+  [userTypes[i], userTypes[j]] = [userTypes[j], userTypes[i]];
+  saveUserTypes(userTypes);
+  renderTypeList();
+}
+
+function addUserType() {
+  const name  = document.getElementById('newTypeName').value.trim();
+  const emoji = document.getElementById('newTypeEmoji').value.trim() || '🏋️';
+  const cat   = document.getElementById('newTypeCategory').value;
+  const color = document.getElementById('newTypeColor').value;
+  const light = document.getElementById('newTypeLight').value;
+  if (!name) { showToast('종목명을 입력해주세요', 'error'); return; }
+  if (userTypes.some(t => t.name === name)) { showToast('이미 있는 종목입니다', 'error'); return; }
+  userTypes.push({name, emoji, color, light, category: cat});
+  saveUserTypes(userTypes);
+  renderTypeList();
+  // clear form
+  document.getElementById('newTypeName').value = '';
+  document.getElementById('newTypeEmoji').value = '';
+  updateTypePreview();
+  showToast(`✅ '${name}' 종목이 추가되었습니다`, 'success');
+  renderDashboard();
+}
+
+function deleteUserType(i) {
+  const t = userTypes[i];
+  if (!t) return;
+  const inUse = allData.some(r => r.type === t.name);
+  const msg = inUse
+    ? `'${t.name}' 종목을 삭제할까요? 기존 기록은 '기타'로 표시됩니다.`
+    : `'${t.name}' 종목을 삭제할까요?`;
+  showConfirm(msg, '종목 삭제', '삭제', () => {
+    userTypes.splice(i, 1);
+    saveUserTypes(userTypes);
+    renderTypeList();
+    showToast(`'${t.name}' 종목이 삭제됐습니다`, '');
+    renderDashboard();
+    exerciseItems.forEach(item => {
+      if (item.type === t.name) {
+        item.type = userTypes[0]?.name || '기타';
+        item.actualTime=''; item.distance=''; item.mountain=''; item.sets=[{time:'',count:''}];
+      }
+    });
+    renderExerciseList();
+  });
+}
+
+function resetTypes() {
+  showConfirm('기본 종목으로 초기화할까요? 추가한 종목이 모두 삭제됩니다.', '종목 초기화', '초기화', () => {
+    userTypes = DEFAULT_TYPES.map(t => ({...t}));
+    saveUserTypes(userTypes);
+    renderTypeList();
+    showToast('기본 종목으로 초기화됐습니다', 'success');
+    renderDashboard();
+  });
+}
+
+function updateTypePreview() {
+  const name  = document.getElementById('newTypeName')?.value.trim() || '새 종목';
+  const emoji = document.getElementById('newTypeEmoji')?.value.trim() || '🏋️';
+  const light = document.getElementById('newTypeLight')?.value || '#D8EFE4';
+  const prev  = document.getElementById('typePreview');
+  if (prev) { prev.textContent = `${emoji} ${name}`; prev.style.background = light; }
+}
+
+// ═══════════════════════════════════════════════════════
+//  SETTINGS
+// ═══════════════════════════════════════════════════════
+function saveApiUrl(){
+  const url=document.getElementById('apiUrl').value.trim();
+  if(!url){showToast('URL을 입력해주세요','error');return;}
+  API_URL=url;localStorage.setItem('workout_api_url',url);
+  document.getElementById('apiStatus').textContent='✅ URL이 저장되었습니다';
+  showToast('✅ API URL 저장됨','success');
+}
+
+// ═══════════════════════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════════════════════
+function showToast(msg,type=''){const c=document.getElementById('toastContainer'),t=document.createElement('div');t.className=`toast ${type}`;t.textContent=msg;c.appendChild(t);setTimeout(()=>{t.style.animation='toastOut .25s ease forwards';setTimeout(()=>t.remove(),250);},3000);}
+function showLoading(show){document.getElementById('loadingOverlay').classList.toggle('show',show);}
+function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('overlayBg').classList.add('show');}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlayBg').classList.remove('show');}
+</script>
+</body>
+</html>
